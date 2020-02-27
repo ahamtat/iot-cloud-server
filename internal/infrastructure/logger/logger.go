@@ -54,7 +54,9 @@ func Init(logLevel, filePath string) {
 		}
 		defer func() {
 			if err := logger.Sync(); err != nil {
-				log.Fatalf("can't sync logger: %v", err)
+				// Do not process sync err as told in:
+				// https://github.com/uber-go/zap/issues/328
+				//log.Fatalf("can't sync logger: %v", err)
 			}
 		}()
 		sugar = logger.Sugar()

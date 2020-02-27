@@ -1,0 +1,13 @@
+---
+server_id: "70e47899-7fb3-4ca6-b360-e0c0d1d6aa9e"
+
+amqp:
+  protocol: "amqp"
+  user: "guest"
+  password: "guest"
+  host: "127.0.0.1"
+  port: 5672
+
+log:
+  log_file: ../../cmd/gocloudserver/gocloudserver.log
+  log_level: debug
