@@ -1,11 +1,8 @@
 package interfaces
 
-import "github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
-
-// Interface for business logic parameters
-type LogicParams interface {
-	Load() error
-}
+import (
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
+)
 
 // Interface for application business logic
 type Logic interface {

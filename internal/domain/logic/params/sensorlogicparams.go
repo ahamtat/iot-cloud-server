@@ -1,10 +1,7 @@
 package params
 
 import (
-	"context"
 	"time"
-
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
 )
 
 type InnerParams struct {
@@ -15,7 +12,7 @@ type InnerParams struct {
 	Timestamp time.Time
 }
 
-type InnerParamsMap map[string]InnerParams
+type InnerParamsMap map[string]*InnerParams
 
 // Parameters for sensor business logic
 type SensorLogicParams struct {
@@ -24,16 +21,4 @@ type SensorLogicParams struct {
 }
 
 // Vocabulary for gateway cameras
-type SensorLogicParamsMap map[string]SensorLogicParams
-
-func NewSensorLogicParams(ctx context.Context, gatewayId string) interfaces.LogicParams {
-	p := &SensorLogicParams{
-		DeviceLogicParams: DeviceLogicParams{ctx: ctx, gatewayId: gatewayId},
-	}
-	return p
-}
-
-func (p *SensorLogicParams) Load() error {
-	//
-	return nil
-}
+type SensorLogicParamsMap map[string]*SensorLogicParams

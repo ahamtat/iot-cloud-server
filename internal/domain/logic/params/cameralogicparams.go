@@ -1,11 +1,5 @@
 package params
 
-import (
-	"context"
-
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
-)
-
 type CloudCameraRecordingMode uint
 
 const (
@@ -27,28 +21,16 @@ type CameraLogicParams struct {
 }
 
 // Vocabulary for gateway cameras
-type CameraLogicParamsMap map[string]CameraLogicParams
+type CameraLogicParamsMap map[string]*CameraLogicParams
 
-func NewCameraLogicParams(ctx context.Context, gatewayId string) interfaces.LogicParams {
-	p := &CameraLogicParams{
-		DeviceLogicParams: DeviceLogicParams{ctx: ctx, gatewayId: gatewayId},
-	}
-	return p
-}
-
-func (p *CameraLogicParams) Load() error {
-	//
-	return nil
-}
-
-func (p *CameraLogicParams) ConvertRecordingMode(mode string) (m CloudCameraRecordingMode) {
+func (p *CameraLogicParams) SetRecordingMode(mode string) {
 	switch mode {
 	case "continuous":
-		m = RecordingModeContinuous
+		p.RecordingMode = RecordingModeContinuous
 	case "motion":
-		m = RecordingModeMotion
+		p.RecordingMode = RecordingModeMotion
 	case "schedule":
-		m = RecordingModeSchedule
+		p.RecordingMode = RecordingModeSchedule
 	}
 	return
 }
