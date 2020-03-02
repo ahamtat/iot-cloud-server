@@ -7,6 +7,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
 
 	"github.com/streadway/amqp"
@@ -181,7 +183,7 @@ func (m *Manager) ReadExchangeEvent(ctx context.Context) (ee ExchangeEvent, err 
 	return
 }
 
-func (m *Manager) ProcessExchangeEvents(ctx context.Context) {
+func (m *Manager) ProcessExchangeEvents(ctx context.Context, conn *database.Connection) {
 	for {
 		ee, err := m.ReadExchangeEvent(ctx)
 		if err != nil {
@@ -202,7 +204,7 @@ func (m *Manager) ProcessExchangeEvents(ctx context.Context) {
 			if len(strArr) > 1 && strArr[1] == "in" {
 				switch eventType {
 				case "queue.created":
-					ch := NewGatewayChannel(m.Ch, m.ServerId, gatewayId)
+					ch := NewGatewayChannel(m.Ch, m.ServerId, gatewayId, conn)
 					ch.Start()
 					m.gwChans[gatewayId] = ch
 				case "queue.deleted":

@@ -8,6 +8,13 @@ amqp:
   host: "127.0.0.1"
   port: 5672
 
+db:
+  user: ""
+  password: ""
+  host: "127.0.0.1"
+  port: 5432
+  database: ""
+
 log:
   log_file: ../../cmd/gocloudserver/gocloudserver.log
   log_level: debug

@@ -9,6 +9,8 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/broker"
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
 	"github.com/spf13/pflag"
@@ -17,7 +19,7 @@ import (
 
 func init() {
 	// using standard library "flag" package
-	flag.String("config", "../../configs/gocloudserver.yaml", "path to configuration flag")
+	flag.String("config", "../../configs/gocloudserver.dev.yaml", "path to configuration flag")
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 	pflag.Parse()
@@ -36,6 +38,19 @@ func init() {
 
 func main() {
 	serverId := fmt.Sprintf("iot-cloud-server-%s", viper.GetString("server_id"))
+
+	// Open database connection
+	conn := database.NewDatabaseConnection(
+		viper.GetString("db.user"),
+		viper.GetString("db.password"),
+		viper.GetString("db.host"),
+		viper.GetString("db.database"),
+		viper.GetInt("db.port"))
+	if err := conn.Init(); err != nil {
+		logger.Fatal("error connecting to database", "error", err)
+	}
+
+	// Create and initialize broker
 	manager := broker.NewManager(
 		serverId,
 		viper.GetString("amqp.protocol"),
@@ -47,7 +62,6 @@ func main() {
 	if err := manager.Open(); err != nil {
 		logger.Fatal("Could not open broker", "error", err)
 	}
-	defer manager.Close()
 
 	if err := manager.EventExchangeInit(); err != nil {
 		logger.Fatal("Could not initialize event exchange", "error", err)
@@ -62,7 +76,7 @@ func main() {
 	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	// Start RabbitMQ events processor
-	go manager.ProcessExchangeEvents(ctx)
+	go manager.ProcessExchangeEvents(ctx, conn)
 
 	// Wait for interruption events
 	select {
@@ -77,4 +91,7 @@ func main() {
 	if err := manager.Close(); err != nil {
 		logger.Error("Error while closing connection", "error", err)
 	}
+
+	// Close database connection
+	conn.Close()
 }
