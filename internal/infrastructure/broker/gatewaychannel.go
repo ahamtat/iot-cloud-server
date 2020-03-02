@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"encoding/json"
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 	"io"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
@@ -23,9 +24,17 @@ type GatewayChannel struct {
 	bl        interfaces.Logic
 }
 
-func NewGatewayChannel(ch *amqp.Channel, serverId, gatewayId string) interfaces.Channel {
+func NewGatewayChannel(ch *amqp.Channel, serverId, gatewayId string, conn *database.Connection) interfaces.Channel {
 	// Create cancel context
 	ctx, cancel := context.WithCancel(context.Background())
+
+	// Create business logic and load params
+	bl := logic.NewGatewayLogic(ctx, conn, gatewayId)
+	if err := bl.LoadParams(); err != nil {
+		logger.Error("cannot load business logic params",
+			"error", err,
+			"gateway", gatewayId)
+	}
 
 	// Create and initialize gateway i/o channel
 	c := &GatewayChannel{
@@ -33,7 +42,7 @@ func NewGatewayChannel(ch *amqp.Channel, serverId, gatewayId string) interfaces.
 		gatewayId: gatewayId,
 		ctx:       ctx,
 		cancel:    cancel,
-		bl:        logic.NewGatewayLogic(ctx),
+		bl:        bl,
 	}
 	if c.out = NewAmqpReader(ctx, ch, gatewayId); c.out == nil {
 		return nil
