@@ -2,6 +2,10 @@ package logic
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
+	"github.com/pkg/errors"
+	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
@@ -10,18 +14,125 @@ import (
 
 type GatewayLogic struct {
 	ctx          context.Context
+	conn         *database.Connection
 	gatewayId    string
 	CameraParams params.CameraLogicParamsMap
 	SensorParams params.SensorLogicParamsMap
 	UserParams   params.UserLogicParams
 }
 
-func NewGatewayLogic(ctx context.Context, gatewayId string) interfaces.Logic {
-	return &GatewayLogic{ctx: ctx, gatewayId: gatewayId}
+func NewGatewayLogic(ctx context.Context, conn *database.Connection, gatewayId string) interfaces.Logic {
+	return &GatewayLogic{ctx: ctx, conn: conn, gatewayId: gatewayId}
 }
 
 func (l *GatewayLogic) LoadParams() error {
+	// Wrap context with timeout value for database interactions
+	ctx, _ := context.WithTimeout(l.ctx, 5*time.Second)
+
+	// Create objects
+	l.CameraParams = make(params.CameraLogicParamsMap)
+	l.SensorParams = make(params.SensorLogicParamsMap)
+
+	// Load user params
+	userParamsQueryText :=
+		`SELECT usr.id AS user_id, usr.tfid AS tarif_id, usr.amount AS money, 
+			usr.vip, usr.isLegalEntity, usr.blocked, usr.push
+		FROM v3_gateways AS gw
+			INNER JOIN users AS usr
+				ON gw.user_id = usr.id
+		WHERE gw.gateway_id = '?';`
+	if err := l.conn.Db.GetContext(ctx, &l.UserParams, userParamsQueryText, l.gatewayId); err != nil {
+		return errors.Wrap(err, "failed to query user params")
+	}
+
+	// Load cameras params
+	cameraParamsQueryText :=
+		`SELECT cam.id AS device_table_id, cam.uid AS user_id, cam.stream_id,
+			cam.recording, cam.schedule, cam.gateway_id, cam.title
+		FROM camers AS cam
+			INNER JOIN v3_gateways AS gw
+				ON cam.gateway_id = gw.gateway_id
+			INNER JOIN users AS usr
+				ON cam.uid = usr.id
+			WHERE gw.gateway_id = '?';`
+	cameraRows, err := l.conn.Db.QueryContext(ctx, cameraParamsQueryText, l.gatewayId)
+	if err != nil {
+		return errors.Wrap(err, "failed to query camera params")
+	}
+	for cameraRows.Next() {
+		p := &params.CameraLogicParams{}
+		var recMode string
+		if err = cameraRows.Scan(
+			&p.DeviceTableId, &p.UserId, &p.DeviceId,
+			&recMode, &p.Schedule, &p.GatewayId, &p.Title); err != nil {
+			return errors.Wrap(err, "could not read record data")
+		}
+		p.SetRecordingMode(recMode)
+		l.CameraParams[p.DeviceId] = p
+	}
+	cameraRows.Close()
+
+	// Load sensors params
+	sensorParamsQueryText :=
+		`SELECT dev.id AS device_table_id, dev.device_id, dev.user_id, dev.title, dev.gateway_id
+		FROM v3_devices AS dev
+			INNER JOIN v3_gateways AS gw
+				ON dev.gateway_id = gw.gateway_id
+		WHERE gw.gateway_id = '?';`
+	sensorRows, err := l.conn.Db.QueryContext(ctx, sensorParamsQueryText, l.gatewayId)
+	if err != nil {
+		return errors.Wrap(err, "failed to query sensor device params")
+	}
+	for sensorRows.Next() {
+		p := &params.SensorLogicParams{}
+		if err = sensorRows.Scan(&p.DeviceTableId, &p.DeviceId, &p.UserId, &p.Title, &p.GatewayId); err != nil {
+			return errors.Wrap(err, "could not read record data")
+		}
+
+		// Load inner params
+		innerParamsQueryText := `
+			SELECT sens.sensor, sens.influx, sens.notify, sens.desc
+			FROM v3_sensors AS sens
+				INNER JOIN v3_devices AS dev
+					ON dev.id = sens.device_id
+			WHERE dev.id = ?;`
+		innerRows, err := l.conn.Db.QueryContext(ctx, innerParamsQueryText, l.gatewayId)
+		if err != nil {
+			return errors.Wrap(err, "failed to query sensor inner params")
+		}
+		for innerRows.Next() {
+			var (
+				sensorType  string
+				description string
+			)
+			ip := &params.InnerParams{}
+			if err = innerRows.Scan(&sensorType, &ip.Influx, &ip.Notify, &description); err != nil {
+				return errors.Wrap(err, "could not read record data")
+			}
+			ip.Desc = getDescription(description, "on")
+			p.ParamsMap = make(params.InnerParamsMap)
+			p.ParamsMap[sensorType] = ip
+		}
+		innerRows.Close()
+
+		l.SensorParams[p.DeviceId] = p
+	}
+	sensorRows.Close()
+
 	return nil
+}
+
+// Extract one value from JSON string
+func getDescription(full, value string) string {
+	m := map[string]string{}
+	if err := json.Unmarshal([]byte(full), &m); err != nil {
+		return ""
+	}
+	out, ok := m[value]
+	if !ok {
+		return ""
+	}
+	return out
 }
 
 func (l *GatewayLogic) Process(message entities.IotMessage) error {
