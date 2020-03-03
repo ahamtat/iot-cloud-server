@@ -3,6 +3,7 @@ package logic
 import (
 	"context"
 	"encoding/json"
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
 	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
@@ -73,7 +74,7 @@ func (l *GatewayLogic) LoadParams() error {
 		p.SetRecordingMode(recMode)
 		l.CameraParams[p.DeviceId] = p
 	}
-	cameraRows.Close()
+	_ = cameraRows.Close()
 
 	// Load sensors params
 	sensorParamsQueryText :=
@@ -116,11 +117,11 @@ func (l *GatewayLogic) LoadParams() error {
 			p.ParamsMap = make(params.InnerParamsMap)
 			p.ParamsMap[sensorType] = ip
 		}
-		innerRows.Close()
+		_ = innerRows.Close()
 
 		l.SensorParams[p.DeviceId] = p
 	}
-	sensorRows.Close()
+	_ = sensorRows.Close()
 
 	// TODO: Inform gateway that logic is loaded and it can operate
 	// SendGatewayMessage
@@ -162,7 +163,8 @@ func (l *GatewayLogic) Process(message *entities.IotMessage) error {
 			err = l.processSensorData(message)
 		}
 	case "preview":
-		// TODO: Run StorePreview task
+		// Store camera image preview in database
+		tasks.NewStorePreviewTask(l.conn).Run(message)
 	case "command":
 		err = l.processCameraCommand(message)
 	case "deviceState":

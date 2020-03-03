@@ -17,6 +17,7 @@ type IotMessage struct {
 	MessageType     string    `json:"messageType"`
 	SensorType      string    `json:"sensorType,omitempty"`
 	SensorData      string    `json:"sensorData,omitempty"`
+	Preview         string    `json:"preview,omitempty"`
 	Label           string    `json:"label,omitempty"`
 	Units           string    `json:"units,omitempty"`
 	MediaserverIp   string    `json:"mediaserverIp,omitempty"`
