@@ -3,6 +3,8 @@ package logic
 import (
 	"errors"
 
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/params"
 )
@@ -25,8 +27,8 @@ func (l *GatewayLogic) processCameraState(message *entities.IotMessage) error {
 		return err
 	}
 
-	// TODO: Run UpdateCameraState task
-	// Update camera state in database
+	// Update camera state in MySQL database
+	tasks.NewUpdateCameraStateTask(l.conn).Run(message)
 
 	switch message.DeviceState {
 	case "streamingOn":
@@ -76,7 +78,8 @@ func (l *GatewayLogic) processCameraData(message *entities.IotMessage) error {
 		}
 	}
 
-	// TODO: Run StoreSensorDataInflux task
+	// Save camera sensors events in InfluxDB
+	tasks.NewStoreSensorDataInfluxTask().Run(message)
 
 	// Inform user about motion detection
 	if message.Label == "motionDetector" && message.SensorData == "on" && l.UserParams.Push {
