@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 	"github.com/pkg/errors"
 
@@ -120,6 +122,9 @@ func (l *GatewayLogic) LoadParams() error {
 	}
 	sensorRows.Close()
 
+	// TODO: Inform gateway that logic is loaded and it can operate
+	// SendGatewayMessage
+
 	return nil
 }
 
@@ -136,7 +141,38 @@ func getDescription(full, value string) string {
 	return out
 }
 
-func (l *GatewayLogic) Process(message entities.IotMessage) error {
-	//
-	return nil
+func (l *GatewayLogic) Process(message *entities.IotMessage) error {
+	// Check if user is blocked
+	if l.UserParams.Blocked {
+		logger.Info("Gateway owner's account is blocked in cloud database")
+		return nil
+	}
+	// Check device id
+	if len(message.DeviceId) == 0 {
+		return errors.New("no device defined in message")
+	}
+
+	var err error
+	switch message.MessageType {
+	case "sensorData":
+		switch message.DeviceType {
+		case "camera":
+			err = l.processCameraData(message)
+		case "sensor":
+			err = l.processSensorData(message)
+		}
+	case "preview":
+		// TODO: Run StorePreview task
+	case "command":
+		err = l.processCameraCommand(message)
+	case "deviceState":
+		if message.DeviceType == "camera" {
+			err = l.processCameraState(message)
+		}
+	case "configurationData":
+		if message.DeviceType == "gateway" {
+			// SetGatewayConfigure(message)
+		}
+	}
+	return err
 }

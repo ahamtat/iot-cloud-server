@@ -1,5 +1,11 @@
 package params
 
+import (
+	"time"
+
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
+)
+
 type CloudCameraRecordingMode uint
 
 const (
@@ -24,13 +30,35 @@ type CameraLogicParams struct {
 type CameraLogicParamsMap map[string]*CameraLogicParams
 
 func (p *CameraLogicParams) SetRecordingMode(mode string) {
+	p.RecordingMode = p.ConvertRecordingMode(mode)
+}
+
+func (p CameraLogicParams) ConvertRecordingMode(mode string) CloudCameraRecordingMode {
+	var recordingMode CloudCameraRecordingMode
 	switch mode {
 	case "continuous":
-		p.RecordingMode = RecordingModeContinuous
+		recordingMode = RecordingModeContinuous
 	case "motion":
-		p.RecordingMode = RecordingModeMotion
+		recordingMode = RecordingModeMotion
 	case "schedule":
-		p.RecordingMode = RecordingModeSchedule
+		recordingMode = RecordingModeSchedule
 	}
-	return
+	return recordingMode
+}
+
+func (p CameraLogicParams) ToMessage(recording bool) *entities.IotMessage {
+	recMode := "off"
+	if recording {
+		recMode = "on"
+	}
+	return &entities.IotMessage{
+		Timestamp:       time.Now(),
+		Vendor:          "Veedo",
+		Version:         "3.1.0",
+		ClientType:      "cloud",
+		DeviceId:        p.DeviceId,
+		MediaserverIp:   p.MediaserverIp,
+		ApplicationName: p.ApplicationName,
+		Recording:       recMode,
+	}
 }

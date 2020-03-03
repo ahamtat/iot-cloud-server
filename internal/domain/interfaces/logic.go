@@ -7,5 +7,5 @@ import (
 // Interface for application business logic
 type Logic interface {
 	LoadParams() error
-	Process(message entities.IotMessage) error
+	Process(message *entities.IotMessage) error
 }

@@ -3,8 +3,9 @@ package broker
 import (
 	"context"
 	"encoding/json"
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 	"io"
+
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
@@ -28,6 +29,7 @@ func NewGatewayChannel(ch *amqp.Channel, serverId, gatewayId string, conn *datab
 	// Create cancel context
 	ctx, cancel := context.WithCancel(context.Background())
 
+	// TODO: Create business logic when gateway is registered in database
 	// Create business logic and load params
 	bl := logic.NewGatewayLogic(ctx, conn, gatewayId)
 	if err := bl.LoadParams(); err != nil {
@@ -86,12 +88,21 @@ func (c *GatewayChannel) Start() {
 
 				// Start processing incoming message in a separate goroutine
 				go func() {
+					// Check if business logic is loaded
+					if c.bl == nil {
+						logger.Error("Gateway logic is not loaded", "gateway", c.gatewayId)
+						return
+					}
 					iotmessage := entities.IotMessage{}
 					if err := json.Unmarshal(buffer, iotmessage); err != nil {
-						logger.Error("Can not unmarshal incoming gateway message", "error", err)
+						logger.Error("can not unmarshal incoming gateway message",
+							"error", err,
+							"gateway", c.gatewayId)
 					}
-					if err := c.bl.Process(iotmessage); err != nil {
-						logger.Error("Error processing message from gateway", "error", err)
+					if err := c.bl.Process(&iotmessage); err != nil {
+						logger.Error("error processing message",
+							"error", err,
+							"gateway", c.gatewayId)
 					}
 				}()
 			}
