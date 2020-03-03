@@ -1,6 +1,9 @@
 package entities
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 // IoT-gateway message representation
 type IotMessage struct {
@@ -19,6 +22,7 @@ type IotMessage struct {
 	SensorData      string    `json:"sensorData,omitempty"`
 	Preview         string    `json:"preview,omitempty"`
 	Label           string    `json:"label,omitempty"`
+	Value           string    `json:"value,omitempty"`
 	Units           string    `json:"units,omitempty"`
 	MediaserverIp   string    `json:"mediaserverIp,omitempty"`
 	ApplicationName string    `json:"applicationName,omitempty"`
@@ -32,4 +36,8 @@ type IotMessage struct {
 	UserId          uint64    `json:"userId,omitempty"`
 	Title           string    `json:"title,omitempty"`
 	Content         string    `json:"content,omitempty"`
+}
+
+func (m IotMessage) GetSensorType() string {
+	return strings.ReplaceAll(m.Label, " ", "_")
 }

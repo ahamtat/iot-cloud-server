@@ -2,10 +2,9 @@ package logic
 
 import (
 	"errors"
-	"strings"
-
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/params"
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
 )
 
 func (l *GatewayLogic) getSensorLogicParams(deviceId string) (*params.SensorLogicParams, error) {
@@ -27,7 +26,7 @@ func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
 	}
 
 	// Check sensor type existence
-	sensorType := strings.ReplaceAll(message.Label, " ", "_")
+	sensorType := message.GetSensorType()
 	innerParams, ok := sensorLogicParams.ParamsMap[sensorType]
 	if !ok {
 		return errors.New("no params for sensor: " + sensorType)
@@ -35,11 +34,11 @@ func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
 
 	// Store sensor data in MySQL
 	message.DeviceTableId = sensorLogicParams.DeviceTableId
-	// TODO: Run StoreSensorDataMySql task
+	tasks.NewStoreSensorDataMySqlTask(l.conn).Run(message)
 
 	// Store sensor data in InfluxDB
 	if innerParams.Influx {
-		// TODO: Run StoreSensorDataInflux task
+		tasks.NewStoreSensorDataInfluxTask().Run(message)
 	}
 
 	// Inform user about sensor event

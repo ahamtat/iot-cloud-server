@@ -9,11 +9,17 @@ amqp:
   port: 5672
 
 db:
-  user: ""
-  password: ""
-  host: "127.0.0.1"
-  port: 5432
-  database: ""
+  cloud:
+    user: ""
+    password: ""
+    host: "127.0.0.1"
+    port: 5432
+    database: ""
+  sensor:
+    host: "127.0.0.1"
+    port: 8086
+    username: ""
+    password: ""
 
 log:
   log_file: ../../cmd/gocloudserver/gocloudserver.log

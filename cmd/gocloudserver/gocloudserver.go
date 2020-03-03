@@ -41,11 +41,11 @@ func main() {
 
 	// Open database connection
 	conn := database.NewDatabaseConnection(
-		viper.GetString("db.user"),
-		viper.GetString("db.password"),
-		viper.GetString("db.host"),
-		viper.GetString("db.database"),
-		viper.GetInt("db.port"))
+		viper.GetString("db.cloud.user"),
+		viper.GetString("db.cloud.password"),
+		viper.GetString("db.cloud.host"),
+		viper.GetString("db.cloud.database"),
+		viper.GetInt("db.cloud.port"))
 	if err := conn.Init(); err != nil {
 		logger.Fatal("error connecting to database", "error", err)
 	}

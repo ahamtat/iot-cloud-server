@@ -15,7 +15,7 @@ type StorePreviewTask struct {
 
 func NewStorePreviewTask(conn *database.Connection) interfaces.Task {
 	if conn == nil {
-		logger.Error("database connection is nil")
+		logger.Error("database connection is nil", "caller", "StorePreviewTask")
 	}
 	return &StorePreviewTask{conn: conn}
 }
