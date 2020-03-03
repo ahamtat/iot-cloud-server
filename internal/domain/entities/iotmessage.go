@@ -28,4 +28,7 @@ type IotMessage struct {
 	Money           uint64    `json:"money,omitempty"`
 	Vip             bool      `json:"vip,omitempty"`
 	LegalEntity     bool      `json:"isLegalEntity,omitempty"`
+	UserId          uint64    `json:"userId,omitempty"`
+	Title           string    `json:"title,omitempty"`
+	Content         string    `json:"content,omitempty"`
 }

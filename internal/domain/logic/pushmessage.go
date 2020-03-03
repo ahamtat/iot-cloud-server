@@ -1,15 +1,9 @@
 package logic
 
-type PushMessage struct {
-	DeviceType    string
-	DeviceTableId uint64
-	UserId        uint64
-	Title         string
-	Content       string
-}
+import "github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 
-func NewPushMessage(deviceType, title, content string, deviceTableId, userId uint64) *PushMessage {
-	return &PushMessage{
+func NewPushMessage(deviceType, title, content string, deviceTableId, userId uint64) *entities.IotMessage {
+	return &entities.IotMessage{
 		DeviceType:    deviceType,
 		DeviceTableId: deviceTableId,
 		UserId:        userId,
