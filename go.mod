@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/go-sql-driver/mysql v1.5.0
+	github.com/google/uuid v1.1.1
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/pkg/errors v0.8.1

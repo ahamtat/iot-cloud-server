@@ -3,7 +3,9 @@ package broker
 import (
 	"context"
 	"encoding/json"
+	"github.com/pkg/errors"
 	"io"
+	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 
@@ -18,6 +20,7 @@ import (
 type GatewayChannel struct {
 	serverId  string
 	gatewayId string
+	conn      *database.Connection
 	out       io.ReadCloser
 	in        io.Writer
 	ctx       context.Context
@@ -39,23 +42,15 @@ func NewGatewayChannel(ch *amqp.Channel, serverId, gatewayId string, conn *datab
 		return nil
 	}
 
-	// TODO: Create business logic when gateway is registered in database
-	// Create business logic and load params
-	bl := logic.NewGatewayLogic(ctx, conn, gatewayId)
-	if err := bl.LoadParams(in); err != nil {
-		logger.Error("cannot load business logic params",
-			"error", err,
-			"gateway", gatewayId)
-	}
-
 	return &GatewayChannel{
 		serverId:  serverId,
 		gatewayId: gatewayId,
+		conn:      conn,
 		out:       out,
 		in:        in,
 		ctx:       ctx,
 		cancel:    cancel,
-		bl:        bl,
+		bl:        nil, // Do not create business logic until gateway status come
 	}
 }
 
@@ -86,31 +81,82 @@ func (c *GatewayChannel) Start() {
 					logger.Error("Error reading channel", "error", err)
 					continue
 				}
-				message := string(buffer)
-				logger.Debug("Message from gateway", "message", message)
+				logger.Debug("Message from gateway", "message", string(buffer))
 
 				// Start processing incoming message in a separate goroutine
 				go func() {
-					// Check if business logic is loaded
-					if c.bl == nil {
-						logger.Error("Gateway logic is not loaded", "gateway", c.gatewayId)
-						return
-					}
-					iotmessage := entities.IotMessage{}
+					iotmessage := &entities.IotMessage{}
 					if err := json.Unmarshal(buffer, iotmessage); err != nil {
 						logger.Error("can not unmarshal incoming gateway message",
 							"error", err,
 							"gateway", c.gatewayId)
 					}
-					if err := c.bl.Process(&iotmessage); err != nil {
+					// Load business logic if gateway is online and registered in database
+					if c.bl == nil {
+						exists, err := c.CheckGatewayExistence(iotmessage)
+						if err != nil {
+							logger.Error("error checking gateway in database",
+								"error", err,
+								"gateway", c.gatewayId,
+								"caller", "GatewayChannel")
+							return
+						}
+						if !exists {
+							logger.Warn("Gateway is not registered in cloud database",
+								"gateway", c.gatewayId,
+								"caller", "GatewayChannel")
+							return
+						}
+
+						// Create business logic
+						c.bl, err = c.CreateLogic()
+						if err != nil {
+							logger.Error("cannot load business logic params",
+								"error", err,
+								"gateway", c.gatewayId,
+								"caller", "GatewayChannel")
+						}
+					}
+
+					// Process incoming message
+					if err := c.bl.Process(iotmessage); err != nil {
 						logger.Error("error processing message",
 							"error", err,
-							"gateway", c.gatewayId)
+							"gateway", c.gatewayId,
+							"caller", "GatewayChannel")
 					}
 				}()
 			}
 		}
 	}()
+}
+
+// Function creates business logic and loads params
+func (c *GatewayChannel) CreateLogic() (interfaces.Logic, error) {
+	bl := logic.NewGatewayLogic(c.ctx, c.conn, c.gatewayId)
+	if err := bl.LoadParams(c.in); err != nil {
+		return nil, err
+	}
+	return bl, nil
+}
+
+// Check for gateway records in database and update devices statuses
+func (c *GatewayChannel) CheckGatewayExistence(message *entities.IotMessage) (bool, error) {
+	// Search gateway in database
+	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+	queryText := `select count(*) from v3_gateways where gateway_id = '?'`
+	var value int
+	err := c.conn.Db.QueryRowContext(ctx, queryText, message.GatewayId).Scan(&value)
+	if err != nil {
+		return false, errors.Wrap(err, "failed searching gateway in database")
+	}
+	if value == 0 {
+		// No gateway found
+		return false, nil
+	}
+
+	// Found gateway in database
+	return true, nil
 }
 
 func (c *GatewayChannel) Stop() {
