@@ -83,13 +83,13 @@ func (l *GatewayLogic) processCameraData(message *entities.IotMessage) error {
 
 	// Inform user about motion detection
 	if message.Label == "motionDetector" && message.SensorData == "on" && l.UserParams.Push {
-		/*pushMessage :=*/ _ = NewPushMessage(
+		pushMessage := NewPushMessage(
 			"camera",
 			cameraLogicParams.Title,
 			"Обнаружено движение",
 			cameraLogicParams.DeviceTableId,
 			cameraLogicParams.UserId)
-		// TODO: Run SendPushNotification task
+		tasks.NewSendPushNotificationTask(l.conn).Run(pushMessage)
 	}
 
 	return nil

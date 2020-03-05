@@ -76,6 +76,11 @@ func (t *RecordMediaStreamTask) Run(message *entities.IotMessage) {
 				"defaultRecorder":           false,
 				"splitOnTcDiscontinuity":    false,
 			})
+			if err != nil {
+				logger.Error("could not marshal request body",
+					"error", err, "caller", "RecordMediaStreamTask")
+				return
+			}
 		}
 		logger.Debug("Sending Wowza recording command", "uri", uri, "request", requestBody,
 			"caller", "RecordMediaStreamTask")
@@ -102,12 +107,16 @@ func (t *RecordMediaStreamTask) Run(message *entities.IotMessage) {
 
 		// Send request
 		resp, err := client.Do(request)
-		if err != nil {
+		if err != nil || resp == nil {
 			logger.Error("error while sending Wowza recording command",
-				"request", request,
+				"error", err,
 				"caller", "RecordMediaStreamTask")
 		}
-		defer resp.Body.Close()
+		defer func() {
+			if resp != nil {
+				_ = resp.Body.Close()
+			}
+		}()
 
 		// Read response for debugging purposes
 		respBody, err := ioutil.ReadAll(resp.Body)
