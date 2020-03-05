@@ -16,7 +16,7 @@ type Connection struct {
 
 func NewDatabaseConnection(user, password, host, database string, port int) *Connection {
 	c := &Connection{
-		dsn: fmt.Sprintf("%s:%s@%s:%d/%s?checkConnLiveness=true",
+		dsn: fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?checkConnLiveness=true",
 			user, password, host, port, database),
 	}
 	return c
