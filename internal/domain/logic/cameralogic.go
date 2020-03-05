@@ -53,10 +53,10 @@ func (l *GatewayLogic) processCameraState(message *entities.IotMessage) error {
 	// Check recording mode
 	switch cameraLogicParams.RecordingMode {
 	case params.RecordingModeContinuous:
-		// TODO: Run RecordMediaStream task
+		tasks.NewRecordMediaStreamTask().Run(message)
 	case params.RecordingModeMotion:
 		if cameraLogicParams.MotionInProcess {
-			// TODO: Run RecordMediaStream task
+			tasks.NewRecordMediaStreamTask().Run(message)
 		}
 	}
 
@@ -74,7 +74,7 @@ func (l *GatewayLogic) processCameraData(message *entities.IotMessage) error {
 		cameraLogicParams.MotionInProcess = message.SensorData == "on"
 		if cameraLogicParams.MediaserverParamsSet {
 			message.Recording = message.SensorData
-			// TODO: Run RecordMediaStream task
+			tasks.NewRecordMediaStreamTask().Run(message)
 		}
 	}
 
@@ -117,28 +117,24 @@ func (l *GatewayLogic) processCameraCommand(message *entities.IotMessage) error 
 			newRecordingMode == params.RecordingModeContinuous &&
 			l.UserParams.CanBeRecorded() {
 			// Start recording on Wowza
-			/*recordingCommand :=*/
-			_ = cameraLogicParams.ToMessage(true)
-			// TODO: Run RecordMediaStream task
+			recordingCommand := cameraLogicParams.ToMessage(true)
+			tasks.NewRecordMediaStreamTask().Run(recordingCommand)
 		} else if currentRecordingMode == params.RecordingModeContinuous &&
 			newRecordingMode == params.RecordingModeMotion {
 			// Stop recording on Wowza
-			/*recordingCommand :=*/
-			_ = cameraLogicParams.ToMessage(false)
-			// TODO: Run RecordMediaStream task
+			recordingCommand := cameraLogicParams.ToMessage(false)
+			tasks.NewRecordMediaStreamTask().Run(recordingCommand)
 		} else if currentRecordingMode == newRecordingMode {
 			// Process user with online tariff
 			if prevTariffId == params.UserTarifOnline && l.UserParams.CanBeRecorded() {
 				// Start recording on Wowza
-				/*recordingCommand :=*/
-				_ = cameraLogicParams.ToMessage(true)
-				// TODO: Run RecordMediaStream task
+				recordingCommand := cameraLogicParams.ToMessage(true)
+				tasks.NewRecordMediaStreamTask().Run(recordingCommand)
 			}
 			if prevTariffId > params.UserTarifOnline && message.TariffId == params.UserTarifOnline {
 				// Stop recording on Wowza
-				/*recordingCommand :=*/
-				_ = cameraLogicParams.ToMessage(false)
-				// TODO: Run RecordMediaStream task
+				recordingCommand := cameraLogicParams.ToMessage(false)
+				tasks.NewRecordMediaStreamTask().Run(recordingCommand)
 			}
 		}
 	}

@@ -6,20 +6,31 @@ amqp:
   user: "guest"
   password: "guest"
   host: "127.0.0.1"
-  port: 5672
+  port: 0
 
 db:
   cloud:
     user: ""
     password: ""
     host: "127.0.0.1"
-    port: 5432
+    port: 0
     database: ""
   sensor:
     host: "127.0.0.1"
-    port: 8086
+    port: 0
     username: ""
     password: ""
+
+wowza:
+  user: ""
+  password: ""
+  port: 0
+
+push:
+  host: ""
+  requestUri: ""
+  appId: ""
+  restApiKey: ""
 
 log:
   log_file: ../../cmd/gocloudserver/gocloudserver.log
