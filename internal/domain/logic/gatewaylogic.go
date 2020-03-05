@@ -181,6 +181,9 @@ func (l *GatewayLogic) Process(message *entities.IotMessage) error {
 
 	var err error
 	switch message.MessageType {
+	case "status":
+		// Update gateway status in MySQL database
+		tasks.NewUpdateGatewayStatusTask(l.conn).Run(message)
 	case "sensorData":
 		switch message.DeviceType {
 		case "camera":
