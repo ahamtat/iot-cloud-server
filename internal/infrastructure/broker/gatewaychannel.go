@@ -29,31 +29,34 @@ func NewGatewayChannel(ch *amqp.Channel, serverId, gatewayId string, conn *datab
 	// Create cancel context
 	ctx, cancel := context.WithCancel(context.Background())
 
+	// Create gateway reader and writer
+	out := NewAmqpReader(ctx, ch, gatewayId)
+	if out == nil {
+		return nil
+	}
+	in := NewAmqpWriter(ch, gatewayId)
+	if in == nil {
+		return nil
+	}
+
 	// TODO: Create business logic when gateway is registered in database
 	// Create business logic and load params
 	bl := logic.NewGatewayLogic(ctx, conn, gatewayId)
-	if err := bl.LoadParams(); err != nil {
+	if err := bl.LoadParams(in); err != nil {
 		logger.Error("cannot load business logic params",
 			"error", err,
 			"gateway", gatewayId)
 	}
 
-	// Create and initialize gateway i/o channel
-	c := &GatewayChannel{
+	return &GatewayChannel{
 		serverId:  serverId,
 		gatewayId: gatewayId,
+		out:       out,
+		in:        in,
 		ctx:       ctx,
 		cancel:    cancel,
 		bl:        bl,
 	}
-	if c.out = NewAmqpReader(ctx, ch, gatewayId); c.out == nil {
-		return nil
-	}
-	if c.in = NewAmqpWriter(ch, gatewayId); c.in == nil {
-		return nil
-	}
-
-	return c
 }
 
 func (c *GatewayChannel) Read(p []byte) (n int, err error) {

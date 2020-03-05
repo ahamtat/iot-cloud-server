@@ -21,11 +21,14 @@ type Manager struct {
 	Password string
 	Host     string
 	Port     int
-	Conn     *amqp.Connection
-	Ch       *amqp.Channel
-	evQue    amqp.Queue
-	evChan   <-chan amqp.Delivery
-	gwChans  map[string]io.ReadWriteCloser
+	// TODO: Make separate AMQP connections and channels for publish/subscribe concurrency
+	// TODO: https://github.com/streadway/amqp/issues/327
+	Conn   *amqp.Connection
+	Ch     *amqp.Channel
+	evQue  amqp.Queue
+	evChan <-chan amqp.Delivery
+	// TODO: Make map concurrent with mutex
+	gwChans map[string]io.ReadWriteCloser
 }
 
 func NewManager(serverId, protocol, user, password, host string, port int) *Manager {

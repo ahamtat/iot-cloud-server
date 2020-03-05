@@ -7,17 +7,17 @@ import (
 
 // IoT-gateway message representation
 type IotMessage struct {
-	Timestamp       time.Time `json:"timestampMs"`
-	Vendor          string    `json:"vendor"`
-	Version         string    `json:"version"`
-	GatewayId       string    `json:"gatewayId"`
-	ClientType      string    `json:"clientType"`
-	DeviceId        string    `json:"deviceId"`
-	DeviceType      string    `json:"deviceType"`
+	Timestamp       time.Time `json:"timestampMs,omitempty"`
+	Vendor          string    `json:"vendor,omitempty"`
+	Version         string    `json:"version,omitempty"`
+	GatewayId       string    `json:"gatewayId,omitempty"`
+	ClientType      string    `json:"clientType,omitempty"`
+	DeviceId        string    `json:"deviceId,omitempty"`
+	DeviceType      string    `json:"deviceType,omitempty"`
 	DeviceState     string    `json:"deviceState,omitempty"`
 	DeviceTableId   uint64    `json:"deviceState,omitempty"`
 	Protocol        string    `json:"protocol,omitempty"`
-	MessageType     string    `json:"messageType"`
+	MessageType     string    `json:"messageType,omitempty"`
 	SensorType      string    `json:"sensorType,omitempty"`
 	SensorData      string    `json:"sensorData,omitempty"`
 	Preview         string    `json:"preview,omitempty"`
@@ -36,6 +36,7 @@ type IotMessage struct {
 	UserId          uint64    `json:"userId,omitempty"`
 	Title           string    `json:"title,omitempty"`
 	Content         string    `json:"content,omitempty"`
+	Status          string    `json:"status,omitempty"`
 }
 
 func (m IotMessage) GetSensorType() string {

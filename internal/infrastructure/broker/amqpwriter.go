@@ -27,7 +27,7 @@ func NewAmqpWriter(ch *amqp.Channel, gatewayId string) io.Writer {
 func (w *AmqpWriter) Write(p []byte) (n int, err error) {
 	if w.ch == nil {
 		err = errors.New("no output channel defined")
-		logger.Error("Error writing message", "error", err)
+		logger.Error("error writing message", "error", err)
 		return 0, err
 	}
 
@@ -42,7 +42,7 @@ func (w *AmqpWriter) Write(p []byte) (n int, err error) {
 			Body:        p,
 		})
 	if err != nil {
-		logger.Error("Failed to publish a message", "error", err)
+		logger.Error("failed to publish a message", "error", err)
 		return 0, err
 	}
 

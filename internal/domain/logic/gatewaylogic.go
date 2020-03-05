@@ -3,8 +3,10 @@ package logic
 import (
 	"context"
 	"encoding/json"
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
+	"io"
 	"time"
+
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
 
@@ -29,7 +31,12 @@ func NewGatewayLogic(ctx context.Context, conn *database.Connection, gatewayId s
 	return &GatewayLogic{ctx: ctx, conn: conn, gatewayId: gatewayId}
 }
 
-func (l *GatewayLogic) LoadParams() error {
+func (l *GatewayLogic) LoadParams(writer io.Writer) error {
+	// Check input params
+	if writer == nil {
+		return errors.New("wrong input parameter")
+	}
+
 	// Wrap context with timeout value for database interactions
 	ctx, _ := context.WithTimeout(l.ctx, 5*time.Second)
 
@@ -123,8 +130,23 @@ func (l *GatewayLogic) LoadParams() error {
 	}
 	_ = sensorRows.Close()
 
-	// TODO: Inform gateway that logic is loaded and it can operate
-	// SendGatewayMessage
+	// Inform gateway that logic is loaded and it can operate
+	statusMessage := &entities.IotMessage{
+		Timestamp:  time.Now(),
+		Vendor:     "Veedo",
+		Version:    "3.1.0",
+		GatewayId:  l.gatewayId,
+		ClientType: "veedoCloud",
+		Protocol:   "amqp",
+		Status:     "registered",
+	}
+	jsonMessage, err := json.Marshal(statusMessage)
+	if err != nil {
+		return errors.Wrap(err, "error marshalling JSON")
+	}
+	if _, err = writer.Write(jsonMessage); err != nil {
+		return errors.Wrap(err, "error sending message to gateway")
+	}
 
 	return nil
 }
@@ -143,6 +165,10 @@ func getDescription(full, value string) string {
 }
 
 func (l *GatewayLogic) Process(message *entities.IotMessage) error {
+	// Check input params
+	if message == nil {
+		return errors.New("wrong input parameter")
+	}
 	// Check if user is blocked
 	if l.UserParams.Blocked {
 		logger.Info("Gateway owner's account is blocked in cloud database")
