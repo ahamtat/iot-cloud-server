@@ -46,7 +46,7 @@ func (t *UpdateGatewayStatusTask) Run(message *entities.IotMessage) {
 
 		// Update gateway status in database
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-		updateQueryText := `update v3_gateways set status = '?' where gateway_id = '?'`
+		updateQueryText := `update v3_gateways set status = ? where gateway_id = ?`
 		_, err := t.conn.Db.ExecContext(ctx, updateQueryText, message.Status, message.GatewayId)
 		if err != nil {
 			logger.Error("error updating gateway status in database",
@@ -55,7 +55,7 @@ func (t *UpdateGatewayStatusTask) Run(message *entities.IotMessage) {
 
 		// Update devices statuses
 		ctx, _ = context.WithTimeout(context.Background(), 5*time.Second)
-		updateQueryText = `update v3_devices set state = ? where gateway_id = '?'`
+		updateQueryText = `update v3_devices set state = ? where gateway_id = ?`
 		_, err = t.conn.Db.ExecContext(ctx, updateQueryText, statusInt, message.GatewayId)
 		if err != nil {
 			logger.Error("error updating devices statuses in database",
@@ -65,7 +65,7 @@ func (t *UpdateGatewayStatusTask) Run(message *entities.IotMessage) {
 		// Update cameras off statuses
 		if statusInt == 0 {
 			ctx, _ = context.WithTimeout(context.Background(), 5*time.Second)
-			updateQueryText = `update camers set onair = ? where gateway_id = '?'`
+			updateQueryText = `update camers set onair = ? where gateway_id = ?`
 			_, err = t.conn.Db.ExecContext(ctx, updateQueryText, statusInt, message.GatewayId)
 			if err != nil {
 				logger.Error("error updating cameras off statuses in database",

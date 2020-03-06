@@ -77,19 +77,21 @@ func (c *GatewayChannel) Start() {
 			case <-c.ctx.Done():
 				break OUTER
 			default:
-				if _, err := c.Read(buffer); err != nil {
+				length, err := c.Read(buffer)
+				if err != nil {
 					logger.Error("Error reading channel", "error", err)
 					continue
 				}
-				logger.Debug("Message from gateway", "message", string(buffer))
+				logger.Debug("Message from gateway", "message", string(buffer[:length]))
 
 				// Start processing incoming message in a separate goroutine
 				go func() {
 					iotmessage := &entities.IotMessage{}
-					if err := json.Unmarshal(buffer, iotmessage); err != nil {
+					if err := json.Unmarshal(buffer[:length], iotmessage); err != nil {
 						logger.Error("can not unmarshal incoming gateway message",
 							"error", err,
 							"gateway", c.gatewayId)
+						return
 					}
 					// Load business logic if gateway is online and registered in database
 					if c.bl == nil {
@@ -144,7 +146,7 @@ func (c *GatewayChannel) CreateLogic() (interfaces.Logic, error) {
 func (c *GatewayChannel) CheckGatewayExistence(message *entities.IotMessage) (bool, error) {
 	// Search gateway in database
 	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-	queryText := `select count(*) from v3_gateways where gateway_id = '?'`
+	queryText := `select count(*) from v3_gateways where gateway_id = ?`
 	var value int
 	err := c.conn.Db.QueryRowContext(ctx, queryText, message.GatewayId).Scan(&value)
 	if err != nil {
@@ -162,4 +164,6 @@ func (c *GatewayChannel) CheckGatewayExistence(message *entities.IotMessage) (bo
 func (c *GatewayChannel) Stop() {
 	// Stop goroutines - fire context cancelling
 	c.cancel()
+	// TODO: Change gateway and all its devices statuses to offline in database
+	// UpdateGatewayStatuses
 }

@@ -32,7 +32,7 @@ func (t *StorePreviewTask) Run(message *entities.IotMessage) {
 		}
 
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
-		updateQueryText := `update camers set preview = '?' where stream_id = '?'`
+		updateQueryText := `update camers set preview = ? where stream_id = ?`
 		_, err := t.conn.Db.ExecContext(ctx, updateQueryText, message.Preview, message.DeviceId)
 		if err != nil {
 			logger.Error("error updating preview", "error", err, "caller", "StorePreviewTask")

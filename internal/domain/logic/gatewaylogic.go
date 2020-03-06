@@ -2,6 +2,7 @@ package logic
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"io"
 	"time"
@@ -51,7 +52,7 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 		FROM v3_gateways AS gw
 			INNER JOIN users AS usr
 				ON gw.user_id = usr.id
-		WHERE gw.gateway_id = '?';`
+		WHERE gw.gateway_id = ?;`
 	if err := l.conn.Db.GetContext(ctx, &l.UserParams, userParamsQueryText, l.gatewayId); err != nil {
 		return errors.Wrap(err, "failed to query user params")
 	}
@@ -65,20 +66,26 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 				ON cam.gateway_id = gw.gateway_id
 			INNER JOIN users AS usr
 				ON cam.uid = usr.id
-			WHERE gw.gateway_id = '?';`
+			WHERE gw.gateway_id = ?;`
 	cameraRows, err := l.conn.Db.QueryContext(ctx, cameraParamsQueryText, l.gatewayId)
 	if err != nil {
 		return errors.Wrap(err, "failed to query camera params")
 	}
 	for cameraRows.Next() {
 		p := &params.CameraLogicParams{}
-		var recMode string
+		var recMode sql.NullString
+		var schedule sql.NullString
 		if err = cameraRows.Scan(
 			&p.DeviceTableId, &p.UserId, &p.DeviceId,
-			&recMode, &p.Schedule, &p.GatewayId, &p.Title); err != nil {
+			&recMode, &schedule, &p.GatewayId, &p.Title); err != nil {
 			return errors.Wrap(err, "could not read record data")
 		}
-		p.SetRecordingMode(recMode)
+		if recMode.Valid {
+			p.SetRecordingMode(recMode.String)
+		}
+		if schedule.Valid {
+			p.Schedule = schedule.String
+		}
 		l.CameraParams[p.DeviceId] = p
 	}
 	_ = cameraRows.Close()
@@ -89,7 +96,7 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 		FROM v3_devices AS dev
 			INNER JOIN v3_gateways AS gw
 				ON dev.gateway_id = gw.gateway_id
-		WHERE gw.gateway_id = '?';`
+		WHERE gw.gateway_id = ?;`
 	sensorRows, err := l.conn.Db.QueryContext(ctx, sensorParamsQueryText, l.gatewayId)
 	if err != nil {
 		return errors.Wrap(err, "failed to query sensor device params")
@@ -130,9 +137,12 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 	}
 	_ = sensorRows.Close()
 
+	logger.Debug("Params for business logic were loaded successfully",
+		"gateway", l.gatewayId, "caller", "GatewayLogic")
+
 	// Inform gateway that logic is loaded and it can operate
 	statusMessage := &entities.IotMessage{
-		Timestamp:  time.Now(),
+		Timestamp:  entities.CreateTimestampMs(time.Now()),
 		Vendor:     "Veedo",
 		Version:    "3.1.0",
 		GatewayId:  l.gatewayId,
@@ -147,6 +157,9 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 	if _, err = writer.Write(jsonMessage); err != nil {
 		return errors.Wrap(err, "error sending message to gateway")
 	}
+
+	logger.Debug("Registered message were sent to gateway",
+		"gateway", l.gatewayId, "caller", "GatewayLogic")
 
 	return nil
 }
@@ -174,10 +187,10 @@ func (l *GatewayLogic) Process(message *entities.IotMessage) error {
 		logger.Info("Gateway owner's account is blocked in cloud database")
 		return nil
 	}
-	// Check device id
-	if len(message.DeviceId) == 0 {
-		return errors.New("no device defined in message")
-	}
+	//// Check device id
+	//if len(message.DeviceId) == 0 {
+	//	return errors.New("no device defined in message")
+	//}
 
 	var err error
 	switch message.MessageType {

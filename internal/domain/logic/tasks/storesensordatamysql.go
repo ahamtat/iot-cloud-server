@@ -35,8 +35,8 @@ func (t *StoreSensorDataMySqlTask) Run(message *entities.IotMessage) {
 		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 		updateQueryText :=
 			`update v3_sensors
-			set value = '?', updated_at = now()
-			where device_id = '?' and sensor = '?'`
+			set value = ?, updated_at = now()
+			where device_id = ? and sensor = ?`
 		_, err := t.conn.Db.ExecContext(ctx, updateQueryText,
 			message.Value, message.DeviceId, message.GetSensorType())
 		if err != nil {

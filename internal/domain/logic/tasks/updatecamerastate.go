@@ -40,8 +40,8 @@ func (t *UpdateCameraStateTask) Run(message *entities.IotMessage) {
 		if strings.Contains(message.DeviceState, "streaming") {
 			updateQueryText =
 				`update camers
-				set onair = ?, ip = '?', server_ip = '?', application = '?'
-				where stream_id = '?'`
+				set onair = ?, ip = ?, server_ip = ?, application = ?
+				where stream_id = ?`
 			_, err := t.conn.Db.ExecContext(ctx, updateQueryText,
 				onair, message.MediaserverIp, message.MediaserverIp,
 				message.ApplicationName, message.DeviceId)
@@ -49,7 +49,7 @@ func (t *UpdateCameraStateTask) Run(message *entities.IotMessage) {
 				logger.Error("error updating cameras", "error", err, "caller", "UpdateCameraStateTask")
 			}
 		} else {
-			updateQueryText = `update camers set onair = ? where stream_id = '?'`
+			updateQueryText = `update camers set onair = ? where stream_id = ?`
 			_, err := t.conn.Db.ExecContext(ctx, updateQueryText,
 				onair, message.DeviceId)
 			if err != nil {
