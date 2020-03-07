@@ -23,12 +23,11 @@ type Manager struct {
 	Port     int
 	// TODO: Make separate AMQP connections and channels for publish/subscribe concurrency
 	// TODO: https://github.com/streadway/amqp/issues/327
-	Conn   *amqp.Connection
-	Ch     *amqp.Channel
-	evQue  amqp.Queue
-	evChan <-chan amqp.Delivery
-	// TODO: Make map concurrent with mutex
-	gwChans map[string]io.ReadWriteCloser
+	Conn    *amqp.Connection
+	Ch      *amqp.Channel
+	evQue   amqp.Queue
+	evChan  <-chan amqp.Delivery
+	gwChans GatewayChannelsMap
 }
 
 func NewManager(serverId, protocol, user, password, host string, port int) *Manager {
@@ -72,15 +71,12 @@ func (m *Manager) Open() error {
 		return errors.New(fmt.Sprintf("Failed to declare an exchange: %v", err))
 	}
 
-	// Initialize gateways channels map
-	m.gwChans = make(map[string]io.ReadWriteCloser)
-
 	return nil
 }
 
 func (m *Manager) Close() error {
 	// Close gateways
-	for _, ch := range m.gwChans {
+	for _, ch := range m.gwChans.GetChannels() {
 		if err := ch.Close(); err != nil {
 			return nil
 		}
@@ -209,11 +205,11 @@ func (m *Manager) ProcessExchangeEvents(ctx context.Context, conn *database.Conn
 				case "queue.created":
 					ch := NewGatewayChannel(m.Ch, m.ServerId, gatewayId, conn)
 					ch.Start()
-					m.gwChans[gatewayId] = ch
+					m.gwChans.Add(gatewayId, ch)
 				case "queue.deleted":
-					if ch, ok := m.gwChans[gatewayId]; ok {
+					if ch := m.gwChans.Get(gatewayId); ch != nil {
 						_ = ch.Close()
-						delete(m.gwChans, gatewayId)
+						m.gwChans.Remove(gatewayId)
 					} else {
 						logger.Error("No stored gateway info", "gateway", gatewayId)
 					}
