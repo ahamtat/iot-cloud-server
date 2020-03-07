@@ -2,6 +2,7 @@ package logic
 
 import (
 	"errors"
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
 
@@ -83,7 +84,7 @@ func (l *GatewayLogic) processCameraData(message *entities.IotMessage) error {
 
 	// Inform user about motion detection
 	if message.Label == "motionDetector" && message.SensorData == "on" && l.UserParams.Push {
-		pushMessage := NewPushMessage(
+		pushMessage := messages.NewPushMessage(
 			"camera",
 			cameraLogicParams.Title,
 			"Обнаружено движение",

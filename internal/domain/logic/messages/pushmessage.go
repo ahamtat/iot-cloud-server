@@ -1,4 +1,4 @@
-package logic
+package messages
 
 import "github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 

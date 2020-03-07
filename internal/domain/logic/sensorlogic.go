@@ -3,6 +3,7 @@ package logic
 import (
 	"errors"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/params"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
 )
@@ -43,7 +44,7 @@ func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
 
 	// Inform user about sensor event
 	if message.SensorData == "on" && innerParams.Notify && l.UserParams.Push {
-		pushMessage := NewPushMessage(
+		pushMessage := messages.NewPushMessage(
 			"device",
 			sensorLogicParams.Title,
 			innerParams.Desc,

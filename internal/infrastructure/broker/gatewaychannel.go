@@ -3,6 +3,8 @@ package broker
 import (
 	"context"
 	"encoding/json"
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
 	"github.com/pkg/errors"
 	"io"
 	"time"
@@ -164,6 +166,8 @@ func (c *GatewayChannel) CheckGatewayExistence(message *entities.IotMessage) (bo
 func (c *GatewayChannel) Stop() {
 	// Stop goroutines - fire context cancelling
 	c.cancel()
-	// TODO: Change gateway and all its devices statuses to offline in database
-	// UpdateGatewayStatuses
+
+	// Change gateway and all its devices statuses to offline in database
+	statusMessage := messages.NewStatusMessage(c.gatewayId, "off")
+	tasks.NewUpdateGatewayStatusTask(c.conn).Run(statusMessage)
 }

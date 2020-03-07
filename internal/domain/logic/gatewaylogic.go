@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 	"io"
 	"time"
 
@@ -141,15 +142,7 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 		"gateway", l.gatewayId, "caller", "GatewayLogic")
 
 	// Inform gateway that logic is loaded and it can operate
-	statusMessage := &entities.IotMessage{
-		Timestamp:  entities.CreateTimestampMs(time.Now()),
-		Vendor:     "Veedo",
-		Version:    "3.1.0",
-		GatewayId:  l.gatewayId,
-		ClientType: "veedoCloud",
-		Protocol:   "amqp",
-		Status:     "registered",
-	}
+	statusMessage := messages.NewStatusMessage(l.gatewayId, "registered")
 	jsonMessage, err := json.Marshal(statusMessage)
 	if err != nil {
 		return errors.Wrap(err, "error marshalling JSON")

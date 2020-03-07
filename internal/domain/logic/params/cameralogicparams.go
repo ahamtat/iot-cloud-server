@@ -55,7 +55,7 @@ func (p CameraLogicParams) ToMessage(recording bool) *entities.IotMessage {
 		Timestamp:       entities.CreateTimestampMs(time.Now()),
 		Vendor:          "Veedo",
 		Version:         "3.1.0",
-		ClientType:      "cloud",
+		ClientType:      "veedoCloud",
 		DeviceId:        p.DeviceId,
 		MediaserverIp:   p.MediaserverIp,
 		ApplicationName: p.ApplicationName,
