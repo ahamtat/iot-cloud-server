@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
