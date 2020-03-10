@@ -33,7 +33,7 @@ func (t *UpdateCameraStateTask) Run(message *entities.IotMessage) {
 
 		// Create update query
 		var onair int
-		if message.DeviceState == "streamingOn" {
+		if message.DeviceState == "on" || message.DeviceState == "streamingOn" {
 			onair = 1
 		}
 		var updateQueryText string

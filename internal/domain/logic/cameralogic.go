@@ -32,6 +32,8 @@ func (l *GatewayLogic) processCameraState(message *entities.IotMessage) error {
 	tasks.NewUpdateCameraStateTask(l.conn).Run(message)
 
 	switch message.DeviceState {
+	case "on":
+	case "off":
 	case "streamingOn":
 		// Check tariff restrictions first
 		if !l.UserParams.CanBeRecorded() {

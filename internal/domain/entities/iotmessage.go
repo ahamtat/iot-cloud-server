@@ -16,7 +16,7 @@ type IotMessage struct {
 	DeviceId        string `json:"deviceId,omitempty"`
 	DeviceType      string `json:"deviceType,omitempty"`
 	DeviceState     string `json:"deviceState,omitempty"`
-	DeviceTableId   uint64 `json:"deviceState,omitempty"`
+	DeviceTableId   uint64 `json:"deviceTableId,omitempty"`
 	Protocol        string `json:"protocol,omitempty"`
 	MessageType     string `json:"messageType,omitempty"`
 	SensorType      string `json:"sensorType,omitempty"`
