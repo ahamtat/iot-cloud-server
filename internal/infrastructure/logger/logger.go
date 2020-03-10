@@ -43,6 +43,7 @@ func Init(logLevel, filePath string) {
 			//EncodeCaller: zapcore.ShortCallerEncoder,
 		}
 
+		// Set log level
 		var level zapcore.Level
 		err := level.UnmarshalText([]byte(logLevel))
 		if err != nil {
@@ -50,6 +51,8 @@ func Init(logLevel, filePath string) {
 		}
 		config.Level = zap.NewAtomicLevelAt(level)
 
+		// Added logrotate syncer from
+		// https://github.com/uber-go/zap/issues/342
 		/*syncer :*/
 		_ = zapcore.AddSync(&lumberjack.Logger{
 			Filename:   filePath,
@@ -58,6 +61,7 @@ func Init(logLevel, filePath string) {
 			MaxAge:     28, // days
 		})
 
+		// Create logger
 		logger, err := config.Build() //SetOutput(syncer, config))
 		if err != nil {
 			log.Fatalf("can't initialize zap logger: %v", err)
