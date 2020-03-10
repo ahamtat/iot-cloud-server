@@ -7,6 +7,8 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"go.uber.org/zap"
+
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var sugar *zap.SugaredLogger
@@ -48,7 +50,15 @@ func Init(logLevel, filePath string) {
 		}
 		config.Level = zap.NewAtomicLevelAt(level)
 
-		logger, err := config.Build()
+		/*syncer :*/
+		_ = zapcore.AddSync(&lumberjack.Logger{
+			Filename:   filePath,
+			MaxSize:    1, // megabytes
+			MaxBackups: 5,
+			MaxAge:     28, // days
+		})
+
+		logger, err := config.Build() //SetOutput(syncer, config))
 		if err != nil {
 			log.Fatalf("can't initialize zap logger: %v", err)
 		}
@@ -60,6 +70,24 @@ func Init(logLevel, filePath string) {
 			}
 		}()
 		sugar = logger.Sugar()
+		//sugar = sugar.Desugar().WithOptions(SetOutput(syncer, config)).Sugar()
+	})
+}
+
+// SetOutput replaces existing Core with new, that writes to passed WriteSyncer.
+func SetOutput(ws zapcore.WriteSyncer, conf zap.Config) zap.Option {
+	var enc zapcore.Encoder
+	// Copy paste from zap.Config.buildEncoder.
+	switch conf.Encoding {
+	case "json":
+		enc = zapcore.NewJSONEncoder(conf.EncoderConfig)
+	case "console":
+		enc = zapcore.NewConsoleEncoder(conf.EncoderConfig)
+	default:
+		panic("unknown encoding")
+	}
+	return zap.WrapCore(func(zapcore.Core) zapcore.Core {
+		return zapcore.NewCore(enc, ws, conf.Level)
 	})
 }
 
