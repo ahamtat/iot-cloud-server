@@ -111,6 +111,7 @@ func (t *RecordMediaStreamTask) Run(message *entities.IotMessage) {
 			logger.Error("error while sending Wowza recording command",
 				"error", err,
 				"caller", "RecordMediaStreamTask")
+			return
 		}
 		defer func() {
 			if resp != nil {
