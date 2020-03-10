@@ -7,9 +7,18 @@ import (
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
 )
 
+type ChannelsMap map[string]io.ReadWriteCloser
+
 type GatewayChannelsMap struct {
 	mx       sync.Mutex
-	channels map[string]io.ReadWriteCloser
+	channels ChannelsMap
+}
+
+func NewGatewayChannelsMap() *GatewayChannelsMap {
+	return &GatewayChannelsMap{
+		mx:       sync.Mutex{},
+		channels: make(ChannelsMap),
+	}
 }
 
 func (gc *GatewayChannelsMap) Add(gatewayId string, ch interfaces.Channel) {

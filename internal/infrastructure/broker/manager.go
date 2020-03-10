@@ -26,7 +26,7 @@ type Manager struct {
 	Ch      *amqp.Channel
 	evQue   amqp.Queue
 	evChan  <-chan amqp.Delivery
-	gwChans GatewayChannelsMap
+	gwChans *GatewayChannelsMap
 }
 
 func NewManager(serverId, protocol, user, password, host string, port int) *Manager {
@@ -37,6 +37,7 @@ func NewManager(serverId, protocol, user, password, host string, port int) *Mana
 		Password: password,
 		Host:     host,
 		Port:     port,
+		gwChans:  NewGatewayChannelsMap(),
 	}
 }
 
