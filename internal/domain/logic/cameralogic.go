@@ -37,7 +37,9 @@ func (l *GatewayLogic) processCameraState(message *entities.IotMessage) error {
 
 	switch message.DeviceState {
 	case "on":
+		return nil
 	case "off":
+		return nil
 	case "streamingOn":
 		// Check tariff restrictions first
 		if !l.UserParams.CanBeRecorded() {
