@@ -2,8 +2,8 @@ package broker
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"strings"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
@@ -77,21 +77,24 @@ func (m *Manager) Open() error {
 func (m *Manager) Close() error {
 	// Close gateways
 	for _, ch := range m.gwChans.GetChannels() {
+		if ch == nil {
+			continue
+		}
 		if err := ch.Close(); err != nil {
-			return nil
+			return errors.Wrap(err, "Error closing stored gateway channel")
 		}
 	}
 
 	// Close channel
 	if m.Ch != nil {
 		if err := m.Ch.Close(); err != nil {
-			return err
+			return errors.Wrap(err, "Error closing management channel")
 		}
 	}
 	// Close connection
 	if m.Conn != nil {
 		if err := m.Conn.Close(); err != nil {
-			return err
+			return errors.Wrap(err, "Error closing connection to broker")
 		}
 	}
 	return nil
