@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"log"
 	"os"
 	"os/signal"
@@ -38,6 +39,13 @@ func init() {
 
 func main() {
 	serverId := fmt.Sprintf("iot-cloud-server-%s", viper.GetString("server_id"))
+
+	logger.Info("")
+	logger.Info("")
+	logger.Info("********************************************************************************")
+	logger.Info("Starting application",
+		"name", "gocloudserver", "version", entities.VeedoVersion,
+		"caller", "main()")
 
 	// Open database connection
 	conn := database.NewDatabaseConnection(

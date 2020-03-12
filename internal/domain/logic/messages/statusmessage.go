@@ -9,7 +9,7 @@ func NewStatusMessage(gatewayId, status string) *entities.IotMessage {
 	return &entities.IotMessage{
 		Timestamp:  entities.CreateTimestampMs(time.Now()),
 		Vendor:     "Veedo",
-		Version:    "3.1.0",
+		Version:    entities.VeedoVersion,
 		GatewayId:  gatewayId,
 		ClientType: "veedoCloud",
 		Protocol:   "amqp",
