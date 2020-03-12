@@ -60,6 +60,9 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 		return errors.Wrap(err, "failed to query user params")
 	}
 
+	// Renew context
+	ctx, _ = context.WithTimeout(l.ctx, 5*time.Second)
+
 	// Load cameras params
 	cameraParamsQueryText :=
 		`SELECT cam.id AS device_table_id, cam.uid AS user_id, cam.stream_id,
@@ -93,6 +96,9 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 	}
 	_ = cameraRows.Close()
 
+	// Renew context
+	ctx, _ = context.WithTimeout(l.ctx, 30*time.Second)
+
 	// Load sensors params
 	sensorParamsQueryText :=
 		`SELECT dev.id AS device_table_id, dev.device_id, dev.user_id, dev.title, dev.gateway_id
@@ -120,7 +126,7 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 				INNER JOIN v3_devices AS dev
 					ON dev.id = sens.device_id
 			WHERE dev.id = ?;`
-		innerRows, err := l.conn.Db.QueryContext(ctx, innerParamsQueryText, l.gatewayId)
+		innerRows, err := l.conn.Db.QueryContext(ctx, innerParamsQueryText, p.DeviceTableId)
 		if err != nil {
 			return errors.Wrap(err, "failed to query sensor inner params")
 		}

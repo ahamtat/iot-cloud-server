@@ -36,7 +36,7 @@ func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
 	if !ok {
 		return errors.New("no params for sensor: " + sensorType)
 	}
-	innerParams, ok := something.(params.InnerParams)
+	innerParams, ok := something.(*params.InnerParams)
 	if !ok {
 		return errors.New("error casting interface to InnerParams")
 	}
