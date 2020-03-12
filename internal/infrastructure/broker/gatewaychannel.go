@@ -69,6 +69,14 @@ func (c *GatewayChannel) Close() error {
 	return c.out.Close()
 }
 
+func (c GatewayChannel) PrintMessage(message entities.IotMessage) {
+	// Slim long preview
+	if len(message.Preview) > 0 {
+		message.Preview = "Some Base64 code ;)"
+	}
+	logger.Debug("Message from gateway", "message", message, "gateway", c.gatewayId)
+}
+
 func (c *GatewayChannel) Start() {
 	// Read and process messages from gateway
 	go func() {
@@ -84,7 +92,6 @@ func (c *GatewayChannel) Start() {
 					logger.Error("Error reading channel", "error", err)
 					continue
 				}
-				logger.Debug("Message from gateway", "message", string(buffer[:length]))
 
 				// Start processing incoming message in a separate goroutine
 				go func() {
@@ -95,6 +102,8 @@ func (c *GatewayChannel) Start() {
 							"gateway", c.gatewayId)
 						return
 					}
+					// Print copy of incoming message to log
+					c.PrintMessage(*iotmessage)
 					// Load business logic if gateway is online and registered in database
 					if c.bl == nil {
 						exists, err := c.CheckGatewayExistence(iotmessage)
