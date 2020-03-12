@@ -24,13 +24,19 @@ type GatewayLogic struct {
 	ctx          context.Context
 	conn         *database.Connection
 	gatewayId    string
-	CameraParams params.CameraLogicParamsMap
-	SensorParams params.SensorLogicParamsMap
+	CameraParams *params.GuardedParamsMap
+	SensorParams *params.GuardedParamsMap
 	UserParams   params.UserLogicParams
 }
 
 func NewGatewayLogic(ctx context.Context, conn *database.Connection, gatewayId string) interfaces.Logic {
-	return &GatewayLogic{ctx: ctx, conn: conn, gatewayId: gatewayId}
+	return &GatewayLogic{
+		ctx:          ctx,
+		conn:         conn,
+		gatewayId:    gatewayId,
+		CameraParams: params.NewGuardedParamsMap(),
+		SensorParams: params.NewGuardedParamsMap(),
+	}
 }
 
 func (l *GatewayLogic) LoadParams(writer io.Writer) error {
@@ -41,10 +47,6 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 
 	// Wrap context with timeout value for database interactions
 	ctx, _ := context.WithTimeout(l.ctx, 5*time.Second)
-
-	// Create objects
-	l.CameraParams = make(params.CameraLogicParamsMap)
-	l.SensorParams = make(params.SensorLogicParamsMap)
 
 	// Load user params
 	userParamsQueryText :=
@@ -87,7 +89,7 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 		if schedule.Valid {
 			p.Schedule = schedule.String
 		}
-		l.CameraParams[p.DeviceId] = p
+		l.CameraParams.Add(p.DeviceId, p)
 	}
 	_ = cameraRows.Close()
 
@@ -103,14 +105,17 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 		return errors.Wrap(err, "failed to query sensor device params")
 	}
 	for sensorRows.Next() {
-		p := &params.SensorLogicParams{}
+		p := &params.SensorLogicParams{
+			DeviceLogicParams: params.DeviceLogicParams{},
+			Inner:             params.NewGuardedParamsMap(),
+		}
 		if err = sensorRows.Scan(&p.DeviceTableId, &p.DeviceId, &p.UserId, &p.Title, &p.GatewayId); err != nil {
 			return errors.Wrap(err, "could not read record data")
 		}
 
 		// Load inner params
-		innerParamsQueryText := `
-			SELECT sens.sensor, sens.influx, sens.notify, sens.desc
+		innerParamsQueryText :=
+			`SELECT sens.sensor, sens.influx, sens.notify, sens.desc
 			FROM v3_sensors AS sens
 				INNER JOIN v3_devices AS dev
 					ON dev.id = sens.device_id
@@ -129,12 +134,11 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 				return errors.Wrap(err, "could not read record data")
 			}
 			ip.Desc = getDescription(description, "on")
-			p.ParamsMap = make(params.InnerParamsMap)
-			p.ParamsMap[sensorType] = ip
+			p.Inner.Add(sensorType, ip)
 		}
 		_ = innerRows.Close()
 
-		l.SensorParams[p.DeviceId] = p
+		l.SensorParams.Add(p.DeviceId, p)
 	}
 	_ = sensorRows.Close()
 

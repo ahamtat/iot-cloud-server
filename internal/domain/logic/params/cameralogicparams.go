@@ -26,9 +26,6 @@ type CameraLogicParams struct {
 	MotionInProcess      bool
 }
 
-// Vocabulary for gateway cameras
-type CameraLogicParamsMap map[string]*CameraLogicParams
-
 func (p *CameraLogicParams) SetRecordingMode(mode string) {
 	p.RecordingMode = p.ConvertRecordingMode(mode)
 }

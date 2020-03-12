@@ -15,9 +15,13 @@ func (l *GatewayLogic) getCameraLogicParams(deviceId string) (*params.CameraLogi
 		return nil, errors.New("no camera logic params loaded")
 	}
 
-	p, ok := l.CameraParams[deviceId]
+	something, ok := l.CameraParams.Get(deviceId)
 	if !ok {
 		return nil, errors.New("no logic params for camera " + deviceId)
+	}
+	p, ok := something.(*params.CameraLogicParams)
+	if !ok {
+		return nil, errors.New("error casting interface to CameraLogicParams")
 	}
 	return p, nil
 }

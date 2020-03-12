@@ -12,13 +12,8 @@ type InnerParams struct {
 	Timestamp time.Time
 }
 
-type InnerParamsMap map[string]*InnerParams
-
 // Parameters for sensor business logic
 type SensorLogicParams struct {
 	DeviceLogicParams
-	ParamsMap InnerParamsMap
+	Inner *GuardedParamsMap
 }
-
-// Vocabulary for gateway cameras
-type SensorLogicParamsMap map[string]*SensorLogicParams

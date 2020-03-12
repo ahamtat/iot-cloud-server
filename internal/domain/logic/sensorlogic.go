@@ -13,11 +13,15 @@ func (l *GatewayLogic) getSensorLogicParams(deviceId string) (*params.SensorLogi
 		return nil, errors.New("no sensor logic params loaded")
 	}
 
-	p, ok := l.SensorParams[deviceId]
+	p, ok := l.SensorParams.Get(deviceId)
 	if !ok {
 		return nil, errors.New("no logic params for sensor " + deviceId)
 	}
-	return p, nil
+	pc, ok := p.(*params.SensorLogicParams)
+	if !ok {
+		return nil, errors.New("error casting interface to SensorLogicParams")
+	}
+	return pc, nil
 }
 
 func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
@@ -28,9 +32,13 @@ func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
 
 	// Check sensor type existence
 	sensorType := message.GetSensorType()
-	innerParams, ok := sensorLogicParams.ParamsMap[sensorType]
+	something, ok := sensorLogicParams.Inner.Get(sensorType)
 	if !ok {
 		return errors.New("no params for sensor: " + sensorType)
+	}
+	innerParams, ok := something.(params.InnerParams)
+	if !ok {
+		return errors.New("error casting interface to InnerParams")
 	}
 
 	// Store sensor data in MySQL
