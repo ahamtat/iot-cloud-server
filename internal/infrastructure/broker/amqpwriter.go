@@ -1,9 +1,10 @@
 package broker
 
 import (
-	"errors"
 	"fmt"
 	"io"
+
+	"github.com/pkg/errors"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
 
@@ -11,40 +12,55 @@ import (
 )
 
 type AmqpWriter struct {
-	ch      *amqp.Channel
-	routing string
+	cwq        *ChannelWithQueue
+	routingKey string
 }
 
-func NewAmqpWriter(ch *amqp.Channel, gatewayId string) io.Writer {
-	w := &AmqpWriter{}
-	w.ch = ch
-	w.routing = fmt.Sprintf("gateway.%s.in", gatewayId)
-	return w
+func NewAmqpWriter(conn *amqp.Connection, gatewayId string) io.WriteCloser {
+
+	// Create amqp channel and queue
+	ch, err := NewChannelWithQueue(conn, nil)
+	if err != nil {
+		logger.Error("failed creating amqp channel and queue",
+			"error", err, "gateway", gatewayId,
+			"caller", "NewAmqpWriter")
+		return nil
+	}
+
+	return &AmqpWriter{
+		cwq:        ch,
+		routingKey: fmt.Sprintf("gateway.%s.in", gatewayId),
+	}
 }
 
 // Write message to RabbitMQ broker.
 // Returns message length on success or error if any
 func (w *AmqpWriter) Write(p []byte) (n int, err error) {
-	if w.ch == nil {
-		err = errors.New("no output channel defined")
-		logger.Error("error writing message", "error", err)
-		return 0, err
+	if w.cwq.Ch == nil {
+		return 0, errors.New("no output channel defined")
 	}
 
 	// Send message to gateway
-	err = w.ch.Publish(
-		"veedo.gateways", // exchange
-		w.routing,        // routing key
-		false,            // mandatory
-		false,            // immediate
+	err = w.cwq.Ch.Publish(
+		exchangeName, // exchange
+		w.routingKey, // routing key
+		false,        // mandatory
+		false,        // immediate
 		amqp.Publishing{
 			ContentType: "application/json",
 			Body:        p,
 		})
 	if err != nil {
-		logger.Error("failed to publish a message", "error", err)
-		return 0, err
+		return 0, errors.Wrap(err, "failed to publish a message")
 	}
 
 	return len(p), nil
+}
+
+func (w *AmqpWriter) Close() error {
+	if err := w.cwq.Close(); err != nil {
+		return errors.Wrap(err, "failed closing gateway input channel")
+	}
+	//logger.Info("Gateway input channel closed")
+	return nil
 }

@@ -2,9 +2,10 @@ package broker
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
+
+	"github.com/pkg/errors"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
 
@@ -12,78 +13,54 @@ import (
 )
 
 type AmqpReader struct {
-	ch   *amqp.Channel
-	q    amqp.Queue
-	msgs <-chan amqp.Delivery
 	ctx  context.Context
+	cwq  *ChannelWithQueue
+	msgs <-chan amqp.Delivery
 }
 
-func NewAmqpReader(ctx context.Context, ch *amqp.Channel, gatewayId string) io.ReadCloser {
-	var err error
+func NewAmqpReader(ctx context.Context, conn *amqp.Connection, gatewayId string) io.ReadCloser {
 
-	// Create reader object
-	r := &AmqpReader{}
-	r.ctx = ctx
-
-	// Create queue
-	r.ch = ch
+	// Create amqp channel and queue
 	queueName := fmt.Sprintf("%s.out", gatewayId)
-	r.q, err = r.ch.QueueDeclare(
-		queueName, // name
-		false,     // durable
-		false,     // delete when unused
-		true,      // exclusive
-		false,     // no-wait
-		nil,       // arguments
-	)
+	ch, err := NewChannelWithQueue(conn, &queueName)
 	if err != nil {
-		logger.Error("failed to declare a queue", "error", err)
-		return nil
-	}
-
-	// Binding queue to exchange
-	exchange := "veedo.gateways"
-	routing := fmt.Sprintf("gateway.%s.out", gatewayId)
-	logger.Debug(
-		"Binding queue to exchange with routing key",
-		"queue", r.q.Name,
-		"exchange", exchange,
-		"routing_key", routing)
-	err = r.ch.QueueBind(
-		r.q.Name, // queue name
-		routing,  // routing key
-		exchange, // exchange
-		false,
-		nil)
-	if err != nil {
-		logger.Error("Failed to bind a queue", "error", err)
+		logger.Error("failed creating amqp channel and queue",
+			"error", err, "queue", queueName, "gateway", gatewayId,
+			"caller", "NewAmqpReader")
 		return nil
 	}
 
 	// Create consuming channel
-	r.msgs, err = r.ch.Consume(
-		r.q.Name, // queue
-		"",       // consumer
-		true,     // auto ack
-		false,    // exclusive
-		false,    // no local
-		false,    // no wait
-		nil,      // args
+	msgs, err := ch.Ch.Consume(
+		ch.Que.Name, // queue
+		"",          // consumer
+		true,        // auto ack
+		true,        // exclusive
+		false,       // no local
+		false,       // no wait
+		nil,         // args
 	)
 	if err != nil {
-		logger.Error("Failed to register a consumer", "error", err)
+		logger.Error("failed to register a consumer",
+			"error", err, "queue", queueName, "gateway", gatewayId,
+			"caller", "NewAmqpReader")
 		return nil
 	}
 
-	logger.Info("Gateway output channel created", "gateway", gatewayId, "queue", r.q.Name)
-	return r
+	// Return reader object
+	//logger.Info("Gateway output channel created", "gateway", gatewayId, "queue", ch.Que.Name)
+	return &AmqpReader{
+		ctx:  ctx,
+		cwq:  ch,
+		msgs: msgs,
+	}
 }
 
 // Read one message from RabbitMQ queue. Returns message length in bytes
 func (r *AmqpReader) Read(p []byte) (n int, err error) {
 	select {
 	case <-r.ctx.Done():
-		err = errors.New("context cancelled")
+		logger.Debug("Context cancelled", "caller", "AmqpReader")
 	case message, ok := <-r.msgs:
 		if ok {
 			n = copy(p, message.Body)
@@ -93,7 +70,9 @@ func (r *AmqpReader) Read(p []byte) (n int, err error) {
 }
 
 func (r *AmqpReader) Close() error {
-	_, err := r.ch.QueueDelete(r.q.Name, false, false, true)
-	logger.Info("Gateway output channel closed", "queue", r.q.Name)
-	return err
+	if err := r.cwq.Close(); err != nil {
+		return errors.Wrap(err, "failed closing gateway output channel")
+	}
+	//logger.Info("Gateway output channel closed")
+	return nil
 }

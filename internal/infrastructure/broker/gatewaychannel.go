@@ -3,11 +3,12 @@ package broker
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"time"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
 	"github.com/pkg/errors"
-	"io"
-	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 
@@ -24,22 +25,22 @@ type GatewayChannel struct {
 	gatewayId string
 	conn      *database.Connection
 	out       io.ReadCloser
-	in        io.Writer
+	in        io.WriteCloser
 	ctx       context.Context
 	cancel    context.CancelFunc
 	bl        interfaces.Logic
 }
 
-func NewGatewayChannel(ch *amqp.Channel, serverId, gatewayId string, conn *database.Connection) interfaces.Channel {
+func NewGatewayChannel(amqpConn *amqp.Connection, dbConn *database.Connection, serverId, gatewayId string) interfaces.Channel {
 	// Create cancel context
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create gateway reader and writer
-	out := NewAmqpReader(ctx, ch, gatewayId)
+	out := NewAmqpReader(ctx, amqpConn, gatewayId)
 	if out == nil {
 		return nil
 	}
-	in := NewAmqpWriter(ch, gatewayId)
+	in := NewAmqpWriter(amqpConn, gatewayId)
 	if in == nil {
 		return nil
 	}
@@ -47,7 +48,7 @@ func NewGatewayChannel(ch *amqp.Channel, serverId, gatewayId string, conn *datab
 	return &GatewayChannel{
 		serverId:  serverId,
 		gatewayId: gatewayId,
-		conn:      conn,
+		conn:      dbConn,
 		out:       out,
 		in:        in,
 		ctx:       ctx,
@@ -89,7 +90,7 @@ func (c *GatewayChannel) Start() {
 			default:
 				length, err := c.Read(buffer)
 				if err != nil {
-					logger.Error("Error reading channel", "error", err)
+					logger.Error("error reading channel", "error", err)
 					continue
 				}
 
@@ -175,6 +176,16 @@ func (c *GatewayChannel) CheckGatewayExistence(message *entities.IotMessage) (bo
 func (c *GatewayChannel) Stop() {
 	// Stop goroutines - fire context cancelling
 	c.cancel()
+
+	// Close i/o channels
+	if err := c.out.Close(); err != nil {
+		logger.Error("error closing gateway output channel",
+			"error", err, "caller", "GatewayChannel")
+	}
+	if err := c.in.Close(); err != nil {
+		logger.Error("error closing gateway input channel",
+			"error", err, "caller", "GatewayChannel")
+	}
 
 	// Change gateway and all its devices statuses to offline in database
 	statusMessage := messages.NewStatusMessage(c.gatewayId, "off")

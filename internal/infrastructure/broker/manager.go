@@ -3,8 +3,9 @@ package broker
 import (
 	"context"
 	"fmt"
-	"github.com/pkg/errors"
 	"strings"
+
+	"github.com/pkg/errors"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 
@@ -20,13 +21,11 @@ type Manager struct {
 	Password string
 	Host     string
 	Port     int
-	// TODO: Make separate AMQP connections and channels for publish/subscribe concurrency
-	// TODO: https://github.com/streadway/amqp/issues/327
-	Conn    *amqp.Connection
-	Ch      *amqp.Channel
-	evQue   amqp.Queue
-	evChan  <-chan amqp.Delivery
-	gwChans *GatewayChannelsMap
+	Conn     *amqp.Connection
+	Ch       *amqp.Channel
+	evQue    amqp.Queue
+	evChan   <-chan amqp.Delivery
+	gwChans  *GatewayChannelsMap
 }
 
 func NewManager(serverId, protocol, user, password, host string, port int) *Manager {
@@ -48,28 +47,28 @@ func (m *Manager) Open() error {
 	// Open connection to broker
 	m.Conn, err = amqp.Dial(connUrl)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to connect to RabbitMQ: %v", err))
+		return errors.Wrap(err, "failed connecting to RabbitMQ")
 	}
 
 	// Open channel
 	m.Ch, err = m.Conn.Channel()
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to open a channel: %v", err))
+		return errors.Wrap(err, "failed to open a channel")
 	}
 
-	// Open exchange
-	err = m.Ch.ExchangeDeclare(
-		"veedo.gateways", // name
-		"topic",          // type
-		true,             // durable
-		false,            // auto-deleted
-		false,            // internal
-		false,            // no-wait
-		nil,              // arguments
-	)
-	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to declare an exchange: %v", err))
-	}
+	//// Open exchange
+	//err = m.Ch.ExchangeDeclare(
+	//	exchangeName, // name
+	//	"topic",          // type
+	//	true,             // durable
+	//	false,            // auto-deleted
+	//	false,            // internal
+	//	false,            // no-wait
+	//	nil,              // arguments
+	//)
+	//if err != nil {
+	//	return errors.Wrap(err, "failed declaration an exchange")
+	//}
 
 	return nil
 }
@@ -81,20 +80,28 @@ func (m *Manager) Close() error {
 			continue
 		}
 		if err := ch.Close(); err != nil {
-			return errors.Wrap(err, "Error closing stored gateway channel")
+			return errors.Wrap(err, "error closing stored gateway channel")
+		}
+	}
+
+	// Delete corresponding queue first
+	if len(m.evQue.Name) > 0 {
+		_, err := m.Ch.QueueDelete(m.evQue.Name, false, false, true)
+		if err != nil {
+			logger.Error("failed deleting queue", "caller", "Manager")
 		}
 	}
 
 	// Close channel
 	if m.Ch != nil {
 		if err := m.Ch.Close(); err != nil {
-			return errors.Wrap(err, "Error closing management channel")
+			return errors.Wrap(err, "error closing management channel")
 		}
 	}
 	// Close connection
 	if m.Conn != nil {
 		if err := m.Conn.Close(); err != nil {
-			return errors.Wrap(err, "Error closing connection to broker")
+			return errors.Wrap(err, "error closing connection to broker")
 		}
 	}
 	return nil
@@ -153,6 +160,7 @@ func (m *Manager) EventExchangeInit() error {
 		return err
 	}
 
+	logger.Info("Event exchange manager started")
 	return nil
 }
 
@@ -185,11 +193,11 @@ func (m *Manager) ReadExchangeEvent(ctx context.Context) (ee ExchangeEvent, err 
 	return
 }
 
-func (m *Manager) ProcessExchangeEvents(ctx context.Context, conn *database.Connection) {
+func (m *Manager) ProcessExchangeEvents(ctx context.Context, dbConn *database.Connection) {
 	for {
 		ee, err := m.ReadExchangeEvent(ctx)
 		if err != nil {
-			//logger.Error("Error while reading event", "error", err)
+			//logger.Error("error while reading event", "error", err)
 			continue
 		}
 
@@ -198,7 +206,7 @@ func (m *Manager) ProcessExchangeEvents(ctx context.Context, conn *database.Conn
 		if eventType, ok := ee["eventType"]; ok {
 			queueName, ook := ee["queueName"]
 			if !ook {
-				logger.Error("Error reading queue name from event exchange")
+				logger.Error("error reading queue name from event exchange")
 				continue
 			}
 			strArr := strings.Split(queueName, ".")
@@ -206,7 +214,7 @@ func (m *Manager) ProcessExchangeEvents(ctx context.Context, conn *database.Conn
 			if len(strArr) > 1 && strArr[1] == "in" {
 				switch eventType {
 				case "queue.created":
-					ch := NewGatewayChannel(m.Ch, m.ServerId, gatewayId, conn)
+					ch := NewGatewayChannel(m.Conn, dbConn, m.ServerId, gatewayId)
 					ch.Start()
 					m.gwChans.Add(gatewayId, ch)
 				case "queue.deleted":
@@ -214,7 +222,7 @@ func (m *Manager) ProcessExchangeEvents(ctx context.Context, conn *database.Conn
 						_ = ch.Close()
 						m.gwChans.Remove(gatewayId)
 					} else {
-						logger.Error("No stored gateway info", "gateway", gatewayId)
+						logger.Error("no stored gateway info", "gateway", gatewayId)
 					}
 				}
 			}
