@@ -216,6 +216,11 @@ func (l *GatewayLogic) Process(message *entities.IotMessage) error {
 		if message.DeviceType == "camera" {
 			err = l.processCameraState(message)
 		}
+	case "cloudStreaming":
+		if message.DeviceType == "camera" {
+			// Update camera streaming state in MySQL database
+			tasks.NewUpdateCameraStreamingStateTask(l.conn).Run(message)
+		}
 	case "configurationData":
 		if message.DeviceType == "gateway" {
 			// SetGatewayConfigure(message)

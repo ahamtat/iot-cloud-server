@@ -50,7 +50,10 @@ func (t *UpdateGatewayStatusTask) Run(message *entities.IotMessage) {
 		_, err := t.conn.Db.ExecContext(ctx, updateQueryText, message.Status, message.GatewayId)
 		if err != nil {
 			logger.Error("error updating gateway status in database",
-				"error", err, "caller", "UpdateGatewayStatusTask")
+				"error", err, "gateway", message.GatewayId, "caller", "UpdateGatewayStatusTask")
+		} else {
+			logger.Debug("Gateway status updated in database", "status", message.Status,
+				"gateway", message.GatewayId, "caller", "UpdateGatewayStatusTask")
 		}
 
 		// Update devices statuses
@@ -60,6 +63,9 @@ func (t *UpdateGatewayStatusTask) Run(message *entities.IotMessage) {
 		if err != nil {
 			logger.Error("error updating devices statuses in database",
 				"error", err, "caller", "UpdateGatewayStatusTask")
+		} else {
+			logger.Debug("Devices statuses updated in database", "status", statusInt,
+				"gateway", message.GatewayId, "caller", "UpdateGatewayStatusTask")
 		}
 
 		// Update cameras off statuses
@@ -70,6 +76,9 @@ func (t *UpdateGatewayStatusTask) Run(message *entities.IotMessage) {
 			if err != nil {
 				logger.Error("error updating cameras off statuses in database",
 					"error", err, "caller", "UpdateGatewayStatusTask")
+			} else {
+				logger.Debug("Cameras statuses updated in database", "status", statusInt,
+					"gateway", message.GatewayId, "caller", "UpdateGatewayStatusTask")
 			}
 		}
 	}()
