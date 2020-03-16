@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
@@ -81,6 +82,7 @@ func (c GatewayChannel) PrintMessage(message entities.IotMessage) {
 func (c *GatewayChannel) Start() {
 	// Read and process messages from gateway
 	go func() {
+		var mx sync.Mutex
 		buffer := make([]byte, 50*1024)
 	OUTER:
 		for {
@@ -88,7 +90,9 @@ func (c *GatewayChannel) Start() {
 			case <-c.ctx.Done():
 				break OUTER
 			default:
+				mx.Lock()
 				length, err := c.Read(buffer)
+				mx.Unlock()
 				if err != nil {
 					logger.Error("error reading channel", "error", err)
 					continue
@@ -97,7 +101,10 @@ func (c *GatewayChannel) Start() {
 				// Start processing incoming message in a separate goroutine
 				go func() {
 					iotmessage := &entities.IotMessage{}
-					if err := json.Unmarshal(buffer[:length], iotmessage); err != nil {
+					mx.Lock()
+					err := json.Unmarshal(buffer[:length], iotmessage)
+					mx.Unlock()
+					if err != nil {
 						logger.Error("can not unmarshal incoming gateway message",
 							"error", err,
 							"gateway", c.gatewayId)
