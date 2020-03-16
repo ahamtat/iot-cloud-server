@@ -107,28 +107,32 @@ func (c *GatewayChannel) Start() {
 			case <-c.ctx.Done():
 				break OUTER
 			default:
+				// Read input message
+				inputMessage := entities.IotMessage{}
 				mx.Lock()
 				length, err := c.Read(buffer)
-				mx.Unlock()
 				if err != nil {
 					logger.Error("error reading channel", "error", err)
+					mx.Unlock()
 					continue
 				}
 
-				// Start processing incoming message in a separate goroutine
-				go func() {
-					iotmessage := &entities.IotMessage{}
-					mx.Lock()
-					err := json.Unmarshal(buffer[:length], iotmessage)
+				// Unmarshal input message from JSON
+				err = json.Unmarshal(buffer[:length], &inputMessage)
+				if err != nil {
+					logger.Error("can not unmarshal incoming gateway message",
+						"error", err,
+						"gateway", c.gatewayID)
 					mx.Unlock()
-					if err != nil {
-						logger.Error("can not unmarshal incoming gateway message",
-							"error", err,
-							"gateway", c.gatewayID)
-						return
-					}
-					// Print copy of incoming message to log
-					c.PrintMessage(*iotmessage)
+					continue
+				}
+				// Print copy of incoming message to log
+				c.PrintMessage(inputMessage)
+				mx.Unlock()
+
+				// Start processing incoming message in a separate goroutine
+				go func(message entities.IotMessage) {
+					iotmessage := &message
 					// Load business logic if gateway is online and registered in database
 					if c.bl == nil {
 						exists, err := c.CheckGatewayExistence(iotmessage)
@@ -163,7 +167,7 @@ func (c *GatewayChannel) Start() {
 							"gateway", c.gatewayID,
 							"caller", "GatewayChannel")
 					}
-				}()
+				}(inputMessage)
 			}
 		}
 	}()
