@@ -12,20 +12,22 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// AmqpReader structure for reading channel
 type AmqpReader struct {
 	ctx  context.Context
 	cwq  *ChannelWithQueue
 	msgs <-chan amqp.Delivery
 }
 
-func NewAmqpReader(ctx context.Context, conn *amqp.Connection, gatewayId string) io.ReadCloser {
+// NewAmqpReader function for AmqpReader structure construction
+func NewAmqpReader(ctx context.Context, conn *amqp.Connection, gatewayID string) io.ReadCloser {
 
 	// Create amqp channel and queue
-	queueName := fmt.Sprintf("%s.out", gatewayId)
+	queueName := fmt.Sprintf("%s.out", gatewayID)
 	ch, err := NewChannelWithQueue(conn, &queueName)
 	if err != nil {
 		logger.Error("failed creating amqp channel and queue",
-			"error", err, "queue", queueName, "gateway", gatewayId,
+			"error", err, "queue", queueName, "gateway", gatewayID,
 			"caller", "NewAmqpReader")
 		return nil
 	}
@@ -42,13 +44,13 @@ func NewAmqpReader(ctx context.Context, conn *amqp.Connection, gatewayId string)
 	)
 	if err != nil {
 		logger.Error("failed to register a consumer",
-			"error", err, "queue", queueName, "gateway", gatewayId,
+			"error", err, "queue", queueName, "gateway", gatewayID,
 			"caller", "NewAmqpReader")
 		return nil
 	}
 
 	// Return reader object
-	//logger.Info("Gateway output channel created", "gateway", gatewayId, "queue", ch.Que.Name)
+	//logger.Info("Gateway output channel created", "gateway", gatewayID, "queue", ch.Que.Name)
 	return &AmqpReader{
 		ctx:  ctx,
 		cwq:  ch,
@@ -69,6 +71,7 @@ func (r *AmqpReader) Read(p []byte) (n int, err error) {
 	return
 }
 
+// Close function releases RabbitMQ channel and corresponding queue
 func (r *AmqpReader) Close() error {
 	if err := r.cwq.Close(); err != nil {
 		return errors.Wrap(err, "failed closing gateway output channel")

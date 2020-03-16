@@ -12,11 +12,13 @@ const (
 	exchangeName = "veedo.gateways"
 )
 
+// ChannelWithQueue keeps RabbitMQ channel and corresponding queue
 type ChannelWithQueue struct {
 	Ch  *amqp.Channel
 	Que amqp.Queue
 }
 
+// NewChannelWithQueue function for ChannelWithQueue construction
 func NewChannelWithQueue(conn *amqp.Connection, queueName *string) (*ChannelWithQueue, error) {
 
 	// Open channel
@@ -78,6 +80,7 @@ func NewChannelWithQueue(conn *amqp.Connection, queueName *string) (*ChannelWith
 	}, nil
 }
 
+// Close function releases RabbitMQ channel and corresponding queue
 func (cwq *ChannelWithQueue) Close() error {
 	// Delete corresponding queue first
 	if len(cwq.Que.Name) > 0 {

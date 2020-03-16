@@ -21,9 +21,11 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// GatewayChannel structure keeps data for
+// gateway channel i/o and message processing
 type GatewayChannel struct {
-	serverId  string
-	gatewayId string
+	serverID  string
+	gatewayID string
 	conn      *database.Connection
 	out       io.ReadCloser
 	in        io.WriteCloser
@@ -32,23 +34,24 @@ type GatewayChannel struct {
 	bl        interfaces.Logic
 }
 
-func NewGatewayChannel(amqpConn *amqp.Connection, dbConn *database.Connection, serverId, gatewayId string) interfaces.Channel {
+// NewGatewayChannel function for GatewayChannel structure construction
+func NewGatewayChannel(amqpConn *amqp.Connection, dbConn *database.Connection, serverID, gatewayID string) interfaces.Channel {
 	// Create cancel context
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Create gateway reader and writer
-	out := NewAmqpReader(ctx, amqpConn, gatewayId)
+	out := NewAmqpReader(ctx, amqpConn, gatewayID)
 	if out == nil {
 		return nil
 	}
-	in := NewAmqpWriter(amqpConn, gatewayId)
+	in := NewAmqpWriter(amqpConn, gatewayID)
 	if in == nil {
 		return nil
 	}
 
 	return &GatewayChannel{
-		serverId:  serverId,
-		gatewayId: gatewayId,
+		serverID:  serverID,
+		gatewayID: gatewayID,
 		conn:      dbConn,
 		out:       out,
 		in:        in,
@@ -66,19 +69,33 @@ func (c *GatewayChannel) Write(p []byte) (n int, err error) {
 	return c.in.Write(p)
 }
 
+// Close reading and writing channels
 func (c *GatewayChannel) Close() error {
 	c.Stop()
-	return c.out.Close()
+
+	// Close i/o channels
+	if err := c.out.Close(); err != nil {
+		logger.Error("error closing gateway output channel",
+			"error", err, "caller", "GatewayChannel")
+	}
+	if err := c.in.Close(); err != nil {
+		logger.Error("error closing gateway input channel",
+			"error", err, "caller", "GatewayChannel")
+	}
+
+	return nil
 }
 
+// PrintMessage prints incoming message to log
 func (c GatewayChannel) PrintMessage(message entities.IotMessage) {
 	// Slim long preview
 	if len(message.Preview) > 0 {
 		message.Preview = "Some Base64 code ;)"
 	}
-	logger.Debug("Message from gateway", "message", message, "gateway", c.gatewayId)
+	logger.Debug("Message from gateway", "message", message, "gateway", c.gatewayID)
 }
 
+// Start functions make separate goroutine for message receiving and processing
 func (c *GatewayChannel) Start() {
 	// Read and process messages from gateway
 	go func() {
@@ -107,7 +124,7 @@ func (c *GatewayChannel) Start() {
 					if err != nil {
 						logger.Error("can not unmarshal incoming gateway message",
 							"error", err,
-							"gateway", c.gatewayId)
+							"gateway", c.gatewayID)
 						return
 					}
 					// Print copy of incoming message to log
@@ -118,13 +135,13 @@ func (c *GatewayChannel) Start() {
 						if err != nil {
 							logger.Error("error checking gateway in database",
 								"error", err,
-								"gateway", c.gatewayId,
+								"gateway", c.gatewayID,
 								"caller", "GatewayChannel")
 							return
 						}
 						if !exists {
 							logger.Warn("Gateway is not registered in cloud database",
-								"gateway", c.gatewayId,
+								"gateway", c.gatewayID,
 								"caller", "GatewayChannel")
 							return
 						}
@@ -134,7 +151,7 @@ func (c *GatewayChannel) Start() {
 						if err != nil {
 							logger.Error("cannot load business logic params",
 								"error", err,
-								"gateway", c.gatewayId,
+								"gateway", c.gatewayID,
 								"caller", "GatewayChannel")
 						}
 					}
@@ -143,7 +160,7 @@ func (c *GatewayChannel) Start() {
 					if err := c.bl.Process(iotmessage); err != nil {
 						logger.Error("error processing message",
 							"error", err,
-							"gateway", c.gatewayId,
+							"gateway", c.gatewayID,
 							"caller", "GatewayChannel")
 					}
 				}()
@@ -152,19 +169,22 @@ func (c *GatewayChannel) Start() {
 	}()
 }
 
-// Function creates business logic and loads params
+// CreateLogic function creates business logic and loads params
 func (c *GatewayChannel) CreateLogic() (interfaces.Logic, error) {
-	bl := logic.NewGatewayLogic(c.ctx, c.conn, c.gatewayId)
+	bl := logic.NewGatewayLogic(c.ctx, c.conn, c.gatewayID)
 	if err := bl.LoadParams(c.in); err != nil {
 		return nil, err
 	}
 	return bl, nil
 }
 
-// Check for gateway records in database and update devices statuses
+// CheckGatewayExistence checks for gateway records in database and update devices statuses
 func (c *GatewayChannel) CheckGatewayExistence(message *entities.IotMessage) (bool, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	// Search gateway in database
-	ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 	queryText := `select count(*) from v3_gateways where gateway_id = ?`
 	var value int
 	err := c.conn.Db.QueryRowContext(ctx, queryText, message.GatewayId).Scan(&value)
@@ -180,21 +200,12 @@ func (c *GatewayChannel) CheckGatewayExistence(message *entities.IotMessage) (bo
 	return true, nil
 }
 
+// Stop message processing and writing off status to database
 func (c *GatewayChannel) Stop() {
 	// Stop goroutines - fire context cancelling
 	c.cancel()
 
-	// Close i/o channels
-	if err := c.out.Close(); err != nil {
-		logger.Error("error closing gateway output channel",
-			"error", err, "caller", "GatewayChannel")
-	}
-	if err := c.in.Close(); err != nil {
-		logger.Error("error closing gateway input channel",
-			"error", err, "caller", "GatewayChannel")
-	}
-
 	// Change gateway and all its devices statuses to offline in database
-	statusMessage := messages.NewStatusMessage(c.gatewayId, "off")
+	statusMessage := messages.NewStatusMessage(c.gatewayID, "off")
 	tasks.NewUpdateGatewayStatusTask(c.conn).Run(statusMessage)
 }

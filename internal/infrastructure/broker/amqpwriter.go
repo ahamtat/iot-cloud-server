@@ -11,25 +11,27 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// AmqpWriter structure for writing messages to RabbitMQ broker
 type AmqpWriter struct {
 	cwq        *ChannelWithQueue
 	routingKey string
 }
 
-func NewAmqpWriter(conn *amqp.Connection, gatewayId string) io.WriteCloser {
+// NewAmqpWriter function for AmqpWriter construction
+func NewAmqpWriter(conn *amqp.Connection, gatewayID string) io.WriteCloser {
 
 	// Create amqp channel and queue
 	ch, err := NewChannelWithQueue(conn, nil)
 	if err != nil {
 		logger.Error("failed creating amqp channel and queue",
-			"error", err, "gateway", gatewayId,
+			"error", err, "gateway", gatewayID,
 			"caller", "NewAmqpWriter")
 		return nil
 	}
 
 	return &AmqpWriter{
 		cwq:        ch,
-		routingKey: fmt.Sprintf("gateway.%s.in", gatewayId),
+		routingKey: fmt.Sprintf("gateway.%s.in", gatewayID),
 	}
 }
 
@@ -57,6 +59,7 @@ func (w *AmqpWriter) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
+// Close function releases RabbitMQ channel and corresponding queue
 func (w *AmqpWriter) Close() error {
 	if err := w.cwq.Close(); err != nil {
 		return errors.Wrap(err, "failed closing gateway input channel")

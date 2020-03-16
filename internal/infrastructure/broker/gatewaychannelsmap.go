@@ -7,13 +7,16 @@ import (
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
 )
 
+// ChannelsMap stores gateway channels
 type ChannelsMap map[string]io.ReadWriteCloser
 
+// GatewayChannelsMap keeps channel map with guarding mutex
 type GatewayChannelsMap struct {
 	mx       sync.Mutex
 	channels ChannelsMap
 }
 
+// NewGatewayChannelsMap function constructs GatewayChannelsMap structure
 func NewGatewayChannelsMap() *GatewayChannelsMap {
 	return &GatewayChannelsMap{
 		mx:       sync.Mutex{},
@@ -21,27 +24,31 @@ func NewGatewayChannelsMap() *GatewayChannelsMap {
 	}
 }
 
-func (gc *GatewayChannelsMap) Add(gatewayId string, ch interfaces.Channel) {
+// Add channel to map securely
+func (gc *GatewayChannelsMap) Add(gatewayID string, ch interfaces.Channel) {
 	gc.mx.Lock()
-	gc.channels[gatewayId] = ch
+	gc.channels[gatewayID] = ch
 	gc.mx.Unlock()
 }
 
-func (gc *GatewayChannelsMap) Get(gatewayId string) io.ReadWriteCloser {
+// Get channel from map
+func (gc *GatewayChannelsMap) Get(gatewayID string) io.ReadWriteCloser {
 	var ch io.ReadWriteCloser
 	gc.mx.Lock()
-	ch = gc.channels[gatewayId]
+	ch = gc.channels[gatewayID]
 	gc.mx.Unlock()
 
 	return ch
 }
 
-func (gc *GatewayChannelsMap) Remove(gatewayId string) {
+// Remove channel from map
+func (gc *GatewayChannelsMap) Remove(gatewayID string) {
 	gc.mx.Lock()
-	delete(gc.channels, gatewayId)
+	delete(gc.channels, gatewayID)
 	gc.mx.Unlock()
 }
 
+// GetChannels converts map values to slice of channels
 func (gc *GatewayChannelsMap) GetChannels() []io.ReadWriteCloser {
 	gc.mx.Lock()
 	defer gc.mx.Unlock()

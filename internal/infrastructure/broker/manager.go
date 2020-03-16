@@ -14,8 +14,10 @@ import (
 	"github.com/streadway/amqp"
 )
 
+// Manager structure keeps parameters for AMQP connection,
+// events exchange channel and queue and gateway channels map
 type Manager struct {
-	ServerId string
+	ServerID string
 	Protocol string
 	User     string
 	Password string
@@ -28,9 +30,10 @@ type Manager struct {
 	gwChans  *GatewayChannelsMap
 }
 
-func NewManager(serverId, protocol, user, password, host string, port int) *Manager {
+// NewManager constructs Manager structure with AMQP connection parameters
+func NewManager(ServerID, protocol, user, password, host string, port int) *Manager {
 	return &Manager{
-		ServerId: serverId,
+		ServerID: ServerID,
 		Protocol: protocol,
 		User:     user,
 		Password: password,
@@ -40,12 +43,13 @@ func NewManager(serverId, protocol, user, password, host string, port int) *Mana
 	}
 }
 
+// Open AMQP connection and channel for events exchange
 func (m *Manager) Open() error {
 	var err error
-	connUrl := fmt.Sprintf("%s://%s:%s@%s:%d/", m.Protocol, m.User, m.Password, m.Host, m.Port)
+	connURL := fmt.Sprintf("%s://%s:%s@%s:%d/", m.Protocol, m.User, m.Password, m.Host, m.Port)
 
 	// Open connection to broker
-	m.Conn, err = amqp.Dial(connUrl)
+	m.Conn, err = amqp.Dial(connURL)
 	if err != nil {
 		return errors.Wrap(err, "failed connecting to RabbitMQ")
 	}
@@ -73,6 +77,7 @@ func (m *Manager) Open() error {
 	return nil
 }
 
+// Close gateway channels, event exchange and AMQP connection
 func (m *Manager) Close() error {
 	// Close gateways
 	for _, ch := range m.gwChans.GetChannels() {
@@ -107,6 +112,7 @@ func (m *Manager) Close() error {
 	return nil
 }
 
+// EventExchangeInit creates queue and consumer for events exchange
 func (m *Manager) EventExchangeInit() error {
 	// Check if connection established
 	if m.Conn == nil || m.Ch == nil {
@@ -116,7 +122,7 @@ func (m *Manager) EventExchangeInit() error {
 	// Create queue
 	var err error
 	m.evQue, err = m.Ch.QueueDeclare(
-		m.ServerId, // name
+		m.ServerID, // name
 		false,      // durable
 		false,      // delete when unused
 		true,       // exclusive
@@ -174,15 +180,15 @@ func (m *Manager) Read(p []byte) (n int, err error) {
 	return
 }
 
-type ExchangeEvent map[string]string
+type exchangeEvent map[string]string
 
-func (m *Manager) ReadExchangeEvent(ctx context.Context) (ee ExchangeEvent, err error) {
+func (m *Manager) readExchangeEvent(ctx context.Context) (ee exchangeEvent, err error) {
 	select {
 	case <-ctx.Done():
 		err = errors.New("interrupted reading exchange")
 	case message, ok := <-m.evChan:
 		if ok {
-			ee = ExchangeEvent{
+			ee = exchangeEvent{
 				"eventType": message.RoutingKey,
 				"queueName": message.Headers["name"].(string),
 			}
@@ -193,9 +199,10 @@ func (m *Manager) ReadExchangeEvent(ctx context.Context) (ee ExchangeEvent, err 
 	return
 }
 
+// ProcessExchangeEvents reads exchange event from queue and processes it
 func (m *Manager) ProcessExchangeEvents(ctx context.Context, dbConn *database.Connection) {
 	for {
-		ee, err := m.ReadExchangeEvent(ctx)
+		ee, err := m.readExchangeEvent(ctx)
 		if err != nil {
 			//logger.Error("error while reading event", "error", err)
 			continue
@@ -210,19 +217,19 @@ func (m *Manager) ProcessExchangeEvents(ctx context.Context, dbConn *database.Co
 				continue
 			}
 			strArr := strings.Split(queueName, ".")
-			gatewayId := strArr[0]
+			gatewayID := strArr[0]
 			if len(strArr) > 1 && strArr[1] == "in" {
 				switch eventType {
 				case "queue.created":
-					ch := NewGatewayChannel(m.Conn, dbConn, m.ServerId, gatewayId)
+					ch := NewGatewayChannel(m.Conn, dbConn, m.ServerID, gatewayID)
 					ch.Start()
-					m.gwChans.Add(gatewayId, ch)
+					m.gwChans.Add(gatewayID, ch)
 				case "queue.deleted":
-					if ch := m.gwChans.Get(gatewayId); ch != nil {
+					if ch := m.gwChans.Get(gatewayID); ch != nil {
 						_ = ch.Close()
-						m.gwChans.Remove(gatewayId)
+						m.gwChans.Remove(gatewayID)
 					} else {
-						logger.Error("no stored gateway info", "gateway", gatewayId)
+						logger.Error("no stored gateway info", "gateway", gatewayID)
 					}
 				}
 			}
