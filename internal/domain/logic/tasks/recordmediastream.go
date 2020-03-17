@@ -14,12 +14,15 @@ import (
 	"github.com/spf13/viper"
 )
 
+// RecordMediaStreamTask structure
 type RecordMediaStreamTask struct {
 	username string
 	password string
 	port     int
 }
 
+// NewRecordMediaStreamTask constructs RecordMediaStreamTask
+// and returns task interface
 func NewRecordMediaStreamTask() interfaces.Task {
 	return &RecordMediaStreamTask{
 		username: viper.GetString("wowza.user"),
@@ -28,6 +31,8 @@ func NewRecordMediaStreamTask() interfaces.Task {
 	}
 }
 
+// Run extracts data from incoming message and
+// send RESTful Wowza recording commands
 func (t *RecordMediaStreamTask) Run(message *entities.IotMessage) {
 	go func() {
 		if len(message.GatewayId) == 0 || len(message.DeviceId) == 0 {

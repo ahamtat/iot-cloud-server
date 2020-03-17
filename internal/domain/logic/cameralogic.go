@@ -2,6 +2,7 @@ package logic
 
 import (
 	"errors"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"

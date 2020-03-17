@@ -2,6 +2,7 @@ package logic
 
 import (
 	"errors"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/params"
@@ -30,11 +31,11 @@ func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
 		return err
 	}
 
-	// Check sensor type existence
-	sensorType := message.GetSensorType()
-	something, ok := sensorLogicParams.Inner.Get(sensorType)
+	// Check sensor existence
+	label := message.GetLabel()
+	something, ok := sensorLogicParams.Inner.Get(label)
 	if !ok {
-		return errors.New("no params for sensor: " + sensorType)
+		return errors.New("no params for sensor: " + label)
 	}
 	innerParams, ok := something.(*params.InnerParams)
 	if !ok {

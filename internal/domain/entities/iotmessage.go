@@ -41,6 +41,10 @@ type IotMessage struct {
 }
 
 func (m IotMessage) GetSensorType() string {
+	return strings.ReplaceAll(m.SensorType, " ", "_")
+}
+
+func (m IotMessage) GetLabel() string {
 	return strings.ReplaceAll(m.Label, " ", "_")
 }
 

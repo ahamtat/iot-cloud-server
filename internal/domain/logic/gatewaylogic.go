@@ -4,9 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 	"io"
 	"time"
+
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
 

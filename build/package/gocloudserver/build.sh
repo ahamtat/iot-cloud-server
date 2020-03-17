@@ -8,7 +8,7 @@ mkdir $DirName/cmd
 mkdir $DirName/cmd/gocloudserver
 cd $DirName/cmd/gocloudserver
 go build ../../../../../../cmd/gocloudserver/gocloudserver.go
-strip ./gocloudserver
+#strip ./gocloudserver
 
 cd ../../..
 

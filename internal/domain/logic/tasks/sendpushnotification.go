@@ -16,6 +16,7 @@ import (
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
 )
 
+// SendPushNotificationTask structure
 type SendPushNotificationTask struct {
 	conn       *database.Connection
 	host       string
@@ -24,7 +25,7 @@ type SendPushNotificationTask struct {
 	restApiKey string
 }
 
-// Nested structures to marshal valid JSON request body
+// RequestBodyHeadings nested structures to marshal valid JSON request body
 type RequestBodyHeadings struct {
 	En string `json:"en"`
 	Ru string `json:"ru"`

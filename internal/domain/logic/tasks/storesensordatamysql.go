@@ -2,11 +2,12 @@ package tasks
 
 import (
 	"context"
+	"time"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
-	"time"
 )
 
 type StoreSensorDataMySqlTask struct {
@@ -38,7 +39,7 @@ func (t *StoreSensorDataMySqlTask) Run(message *entities.IotMessage) {
 			set value = ?, updated_at = now()
 			where device_id = ? and sensor = ?`
 		_, err := t.conn.Db.ExecContext(ctx, updateQueryText,
-			message.Value, message.DeviceId, message.GetSensorType())
+			message.SensorData, message.DeviceTableId, message.GetLabel())
 		if err != nil {
 			logger.Error("error updating sensors", "error", err, "caller", "StoreSensorDataMySqlTask")
 		}
