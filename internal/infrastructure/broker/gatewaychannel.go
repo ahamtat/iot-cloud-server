@@ -116,6 +116,11 @@ func (c *GatewayChannel) Start() {
 					mx.Unlock()
 					continue
 				}
+				if length == 0 && err == nil {
+					// Reading channel possibly is to be closed
+					mx.Unlock()
+					continue
+				}
 
 				// Unmarshal input message from JSON
 				err = json.Unmarshal(buffer[:length], &inputMessage)
