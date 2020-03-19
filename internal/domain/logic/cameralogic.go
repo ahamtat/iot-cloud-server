@@ -53,6 +53,10 @@ func (l *GatewayLogic) processCameraState(message *entities.IotMessage) error {
 		cameraLogicParams.MediaserverParamsSet = true
 	case "streamingOff":
 		message.Recording = "off"
+		// Restore mediaserver params
+		message.MediaserverIp = cameraLogicParams.MediaserverIp
+		message.ApplicationName = cameraLogicParams.ApplicationName
+		// Clear mediaserver params
 		cameraLogicParams.MediaserverIp = ""
 		cameraLogicParams.ApplicationName = ""
 		cameraLogicParams.MediaserverParamsSet = false
@@ -84,6 +88,9 @@ func (l *GatewayLogic) processCameraData(message *entities.IotMessage) error {
 		cameraLogicParams.MotionInProcess = message.SensorData == "on"
 		if cameraLogicParams.MediaserverParamsSet {
 			message.Recording = message.SensorData
+			// Restore mediaserver params
+			message.MediaserverIp = cameraLogicParams.MediaserverIp
+			message.ApplicationName = cameraLogicParams.ApplicationName
 			tasks.NewRecordMediaStreamTask().Run(message)
 		}
 	}
