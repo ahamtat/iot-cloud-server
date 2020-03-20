@@ -47,19 +47,19 @@ func (l *GatewayLogic) processCameraState(message *entities.IotMessage) error {
 			return nil
 		}
 		message.Recording = "on"
-		// Store mediaserver params
-		cameraLogicParams.MediaserverIp = message.MediaserverIp
-		cameraLogicParams.ApplicationName = message.ApplicationName
-		cameraLogicParams.MediaserverParamsSet = true
+		//// Store mediaserver params
+		//cameraLogicParams.MediaserverIp = message.MediaserverIp
+		//cameraLogicParams.ApplicationName = message.ApplicationName
+		//cameraLogicParams.MediaserverParamsSet = true
 	case "streamingOff":
 		message.Recording = "off"
-		// Restore mediaserver params
-		message.MediaserverIp = cameraLogicParams.MediaserverIp
-		message.ApplicationName = cameraLogicParams.ApplicationName
-		// Clear mediaserver params
-		cameraLogicParams.MediaserverIp = ""
-		cameraLogicParams.ApplicationName = ""
-		cameraLogicParams.MediaserverParamsSet = false
+		//// Restore mediaserver params
+		//message.MediaserverIp = cameraLogicParams.MediaserverIp
+		//message.ApplicationName = cameraLogicParams.ApplicationName
+		//// Clear mediaserver params
+		//cameraLogicParams.MediaserverIp = ""
+		//cameraLogicParams.ApplicationName = ""
+		//cameraLogicParams.MediaserverParamsSet = false
 	default:
 		return errors.New("wrong deviceState: " + message.DeviceState)
 	}
@@ -86,13 +86,13 @@ func (l *GatewayLogic) processCameraData(message *entities.IotMessage) error {
 	// If recording is motion and detector message then do recording
 	if message.Label == "motionDetector" && cameraLogicParams.RecordingMode == params.RecordingModeMotion {
 		cameraLogicParams.MotionInProcess = message.SensorData == "on"
-		if cameraLogicParams.MediaserverParamsSet {
-			message.Recording = message.SensorData
-			// Restore mediaserver params
-			message.MediaserverIp = cameraLogicParams.MediaserverIp
-			message.ApplicationName = cameraLogicParams.ApplicationName
-			tasks.NewRecordMediaStreamTask().Run(message)
-		}
+		//if cameraLogicParams.MediaserverParamsSet {
+		message.Recording = message.SensorData
+		//// Restore mediaserver params
+		//message.MediaserverIp = cameraLogicParams.MediaserverIp
+		//message.ApplicationName = cameraLogicParams.ApplicationName
+		tasks.NewRecordMediaStreamTask().Run(message)
+		//}
 	}
 
 	// Save camera sensors events in InfluxDB
