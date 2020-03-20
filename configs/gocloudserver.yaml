@@ -26,6 +26,11 @@ wowza:
   password: ""
   port: 0
 
+rest:
+  user: ""
+  password: ""
+  port: 0
+
 push:
   host: ""
   requestUri: ""
