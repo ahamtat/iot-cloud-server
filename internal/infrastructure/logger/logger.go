@@ -18,7 +18,7 @@ var once sync.Once
 // This would be called from a main method when the application starts up
 // This function would ideally, take zap configuration, but is left out
 // in favor of simplicity using the example logger.
-func Init(logLevel, filePath string) {
+func Init(logLevel, filePath string, logRotate bool) {
 	// once ensures the singleton is initialized only once
 	once.Do(func() {
 		config := zap.NewProductionConfig()
@@ -53,13 +53,15 @@ func Init(logLevel, filePath string) {
 
 		// Added logrotate syncer from
 		// https://github.com/uber-go/zap/issues/342
-		/*syncer :*/
-		_ = zapcore.AddSync(&lumberjack.Logger{
-			Filename:   filePath,
-			MaxSize:    1, // megabytes
-			MaxBackups: 5,
-			MaxAge:     28, // days
-		})
+		var syncer zapcore.WriteSyncer
+		if logRotate {
+			syncer = zapcore.AddSync(&lumberjack.Logger{
+				Filename:   filePath,
+				MaxSize:    1, // megabytes
+				MaxBackups: 5,
+				MaxAge:     28, // days
+			})
+		}
 
 		// Create logger
 		logger, err := config.Build() //SetOutput(syncer, config))
@@ -73,8 +75,12 @@ func Init(logLevel, filePath string) {
 				//log.Fatalf("can't sync logger: %v", err)
 			}
 		}()
-		sugar = logger.Sugar()
-		//sugar = sugar.Desugar().WithOptions(SetOutput(syncer, config)).Sugar()
+
+		if logRotate {
+			sugar = sugar.Desugar().WithOptions(SetOutput(syncer, config)).Sugar()
+		} else {
+			sugar = logger.Sugar()
+		}
 	})
 }
 

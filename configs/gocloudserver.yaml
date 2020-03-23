@@ -40,3 +40,4 @@ push:
 log:
   log_file: ../../cmd/gocloudserver/gocloudserver.log
   log_level: debug
+  log_rotate: false

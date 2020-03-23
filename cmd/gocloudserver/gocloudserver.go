@@ -36,7 +36,10 @@ func init() {
 	}
 
 	// Setting log parameters
-	logger.Init(viper.GetString("log.log_level"), viper.GetString("log.log_file"))
+	logger.Init(
+		viper.GetString("log.log_level"),
+		viper.GetString("log.log_file"),
+		viper.GetBool("log.log_rotate"))
 }
 
 func main() {
