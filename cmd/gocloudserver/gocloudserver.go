@@ -4,11 +4,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/rest"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 
@@ -38,7 +40,7 @@ func init() {
 }
 
 func main() {
-	serverId := fmt.Sprintf("iot-cloud-server-%s", viper.GetString("server_id"))
+	serverID := fmt.Sprintf("iot-cloud-server-%s", viper.GetString("server_id"))
 
 	logger.Info("")
 	logger.Info("")
@@ -60,7 +62,7 @@ func main() {
 
 	// Create and initialize broker
 	manager := broker.NewManager(
-		serverId,
+		serverID,
 		viper.GetString("amqp.protocol"),
 		viper.GetString("amqp.user"),
 		viper.GetString("amqp.password"),
@@ -68,11 +70,17 @@ func main() {
 		viper.GetInt("amqp.port"),
 	)
 	if err := manager.Open(); err != nil {
-		logger.Fatal("Could not open broker", "error", err)
+		logger.Fatal("could not open broker", "error", err)
 	}
 
 	if err := manager.EventExchangeInit(); err != nil {
-		logger.Fatal("Could not initialize event exchange", "error", err)
+		logger.Fatal("could not initialize event exchange", "error", err)
+	}
+
+	// Create RESTful API server
+	restAPI := rest.NewServer()
+	if err := restAPI.Init(); err != nil {
+		logger.Fatal("could not initialize RESTful API server", "error", err)
 	}
 
 	// Make cancel context
@@ -86,20 +94,38 @@ func main() {
 	// Start RabbitMQ events processor
 	go manager.ProcessExchangeEvents(ctx, conn)
 
+	// Start RESTful API server in a separate goroutine
+	go func() {
+		if err := restAPI.Start(); err != nil {
+			logger.Fatal("could not start RESTful API server", "error", err)
+		}
+	}()
+
+	logger.Info("Application started. Press Ctrl+C to exit...")
+
 	// Wait for interruption events
 	select {
 	case <-ctx.Done():
-		logger.Info("Program exited")
+		logger.Info("Main context cancelled")
 	case <-done:
+		logger.Info("User or OS interrupted program")
 		cancel()
-		logger.Info("User interrupted program. Bye!")
 	}
 
-	// Make connection shutdown
+	// Make RabbitMQ connection shutdown
 	if err := manager.Close(); err != nil {
-		logger.Error("Error while closing connection", "error", err)
+		logger.Error("error while closing connection", "error", err)
+	}
+
+	// Stop RESTful server
+	if err := restAPI.Stop(); err != nil {
+		logger.Error("could not stop RESTful API server", "error", err)
 	}
 
 	// Close database connection
-	conn.Close()
+	if err := conn.Close(); err != nil {
+		logger.Error("failed closing database connection", "error", err)
+	}
+
+	logger.Info("Application exited properly")
 }
