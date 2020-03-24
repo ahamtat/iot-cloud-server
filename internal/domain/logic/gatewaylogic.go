@@ -229,3 +229,8 @@ func (l *GatewayLogic) Process(message *entities.IotMessage) error {
 	}
 	return err
 }
+
+// SetPush changes push flag for user params
+func (l *GatewayLogic) SetPush(state bool) {
+	l.UserParams.Push = state
+}

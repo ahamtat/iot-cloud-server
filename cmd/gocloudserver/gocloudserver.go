@@ -81,9 +81,9 @@ func main() {
 	}
 
 	// Create RESTful API server
-	restAPI := rest.NewServer()
-	if err := restAPI.Init(); err != nil {
-		logger.Fatal("could not initialize RESTful API server", "error", err)
+	restAPI := rest.NewServer(manager)
+	if restAPI == nil {
+		logger.Fatal("could not initialize RESTful API server")
 	}
 
 	// Make cancel context

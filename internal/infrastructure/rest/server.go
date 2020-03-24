@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/broker"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
@@ -31,70 +33,163 @@ type Server struct {
 	mgr    *broker.Manager
 }
 
-// NewServer constructs REST server
-func NewServer() *Server {
-	return &Server{}
+type commandData struct {
+	Command     string   `json:"command,omitempty"`
+	Attribute   string   `json:"attribute,omitempty"`
+	GatewayIds  []string `json:"gatewayIds,omitempty"`
+	DeviceID    string   `json:"deviceId,omitempty"`
+	TariffID    uint64   `json:"tariffId,omitempty"`
+	Money       uint64   `json:"money,omitempty"`
+	Vip         bool     `json:"vip,omitempty"`
+	LegalEntity bool     `json:"isLegalEntity,omitempty"`
 }
 
-// Init router and middleware
-func (s *Server) Init() error {
-	s.router = gin.Default()
+// NewServer constructs and initializes REST server
+func NewServer(mgr *broker.Manager) *Server {
+
+	server := &Server{
+		router: gin.Default(),
+		srv:    nil,
+		mgr:    mgr,
+	}
 
 	// Group using gin.BasicAuth() middleware
 	// gin.Accounts is a shortcut for map[string]string
-	authorized := s.router.Group("/api/v3", gin.BasicAuth(gin.Accounts{
+	authorized := server.router.Group("/api/v3", gin.BasicAuth(gin.Accounts{
 		viper.GetString("rest.user"): viper.GetString("rest.password"),
 	}))
 
-	// Get server info
-	authorized.GET("/info", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"vendor":      entities.VendorName,
-			"version":     entities.VeedoVersion,
-			"serviceName": entities.ServiceName,
-		})
+	// Set routing handlers
+	authorized.GET("/info", server.handleInfo)
+	authorized.GET("/gateway/configure/:gatewayId", server.handleGatewayConfigure)
+	authorized.POST("/command", server.handleCommand)
+
+	return server
+}
+
+// Get server info
+func (s *Server) handleInfo(c *gin.Context) {
+	c.JSON(http.StatusOK, gin.H{
+		"vendor":      entities.VendorName,
+		"version":     entities.VeedoVersion,
+		"serviceName": entities.ServiceName,
 	})
+}
 
-	// Get gateway configure
-	authorized.GET("/gateway/configure/:gatewayId", func(c *gin.Context) {
-		gatewayID := c.Param("gatewayId")
-		logger.Debug("Getting gateway configure", "gateway", gatewayID)
+// Get gateway configure
+func (s *Server) handleGatewayConfigure(c *gin.Context) {
 
-		// Create RPC request for gateway
-		request := &entities.IotMessage{
-			Timestamp:   entities.CreateTimestampMs(time.Now().Local()),
-			Vendor:      entities.VendorName,
-			Version:     entities.VeedoVersion,
-			GatewayId:   gatewayID,
-			ClientType:  "veedoCloud",
-			DeviceType:  "gateway",
-			Protocol:    "amqp",
-			MessageType: "configurationData",
-			Command:     "get",
+	gatewayID := c.Param("gatewayId")
+	logger.Debug("Getting gateway configure", "gateway", gatewayID)
+
+	// Create RPC request for gateway
+	request := &entities.IotMessage{
+		Timestamp:   entities.CreateTimestampMs(time.Now().Local()),
+		Vendor:      entities.VendorName,
+		Version:     entities.VeedoVersion,
+		GatewayId:   gatewayID,
+		ClientType:  "veedoCloud",
+		DeviceType:  "gateway",
+		Protocol:    "amqp",
+		MessageType: "configurationData",
+		Command:     "get",
+	}
+	response, err := s.mgr.DoGatewayRPC(gatewayID, request)
+	if err != nil {
+		errorText := "gateway RPC request failed"
+		logger.Error(errorText, "error", err, "gateway", gatewayID)
+		c.String(http.StatusBadRequest, errorText)
+		return
+	}
+	if response == nil {
+		errorText := "no gateway configuration returned"
+		logger.Error(errorText, "gateway", gatewayID)
+		c.String(http.StatusBadRequest, errorText)
+		return
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
+// Send command to external services (WSE, Push Notification, gateway)
+func (s *Server) handleCommand(c *gin.Context) {
+
+	// Parse command data from JSON body
+	var data commandData
+	if err := c.ShouldBindJSON(&data); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	logger.Debug("Command data", "data", data)
+
+	// Iterate through gateway ids
+	var gwFound bool
+	for _, gatewayID := range data.GatewayIds {
+
+		gwChan := s.mgr.GetGatewayChannel(gatewayID)
+		if gwChan == nil {
+			logger.Warn("Channel map returned nil object",
+				"gateway", gatewayID, "caller", "handleCommand")
+			continue
 		}
-		response, err := s.mgr.DoGatewayRPC(gatewayID, request)
-		if err != nil {
-			errorText := "gateway RPC request failed"
-			logger.Error(errorText, "error", err, "gateway", gatewayID)
-			c.String(http.StatusBadRequest, errorText)
-			return
-		}
-		if response == nil {
-			errorText := "no gateway configuration returned"
-			logger.Error(errorText, "gateway", gatewayID)
-			c.String(http.StatusBadRequest, errorText)
-			return
+		gwFound = true
+
+		// Cast gateway channel
+		ch, ok := gwChan.(*broker.GatewayChannel)
+		if !ok || ch == nil {
+			logger.Error("type assert failed", "caller", "handleCommand")
+			continue
 		}
 
-		c.JSON(http.StatusOK, response)
-	})
+		// Execute command by its type
+		switch data.Command {
+		case "push":
+			// Set push flag
+			bl := ch.GetLogic()
+			if bl == nil {
+				logger.Error("no business logic loaded", "gateway", gatewayID)
+				continue
+			}
+			bl.SetPush(data.Attribute == "on")
 
-	// Send command to gateway
-	authorized.POST("/command", func(c *gin.Context) {
-		//
-	})
+		case "switch":
+			// Create gateway message to turn on/off smart plug
+			message := entities.CreateCloudIoMessage(gatewayID, data.DeviceID)
+			message.DeviceType = "sensor"
+			message.Protocol = "zwave"
+			message.MessageType = "command"
+			message.Command = data.Command
+			message.Attribute = data.Attribute
 
-	return nil
+			// Send message to gateway
+			tasks.NewSendGatewayMessageTask(gwChan).Run(message)
+
+		case "setRecording":
+			// Create message to logic processor
+			message := entities.CreateCloudIoMessage(gatewayID, data.DeviceID)
+			message.DeviceType = "camera"
+			message.Protocol = "onvif"
+			message.MessageType = "command"
+			message.Command = data.Command
+			message.Attribute = data.Attribute
+			message.TariffId = data.TariffID
+			message.Money = data.Money
+			message.Vip = data.Vip
+			message.LegalEntity = data.LegalEntity
+
+			// Processing incoming message in a separate goroutine
+			go ch.ApplyLogic(*message)
+		}
+	}
+
+	// Return error if no gateways found for incoming command
+	if !gwFound {
+		errorText := "no gateways found"
+		logger.Error(errorText, "gateways", data.GatewayIds)
+		c.String(http.StatusNotFound, errorText)
+	}
+
+	c.String(http.StatusOK, "OK")
 }
 
 // Start RESTful server for all interfaces

@@ -10,4 +10,5 @@ import (
 type Logic interface {
 	LoadParams(writer io.Writer) error
 	Process(message *entities.IotMessage) error
+	SetPush(state bool)
 }

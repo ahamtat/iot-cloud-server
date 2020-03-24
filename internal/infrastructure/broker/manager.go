@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
@@ -61,20 +62,6 @@ func (m *Manager) Open() error {
 	if err != nil {
 		return errors.Wrap(err, "failed to open a channel")
 	}
-
-	//// Open exchange
-	//err = m.Ch.ExchangeDeclare(
-	//	exchangeName, // name
-	//	"topic",          // type
-	//	true,             // durable
-	//	false,            // auto-deleted
-	//	false,            // internal
-	//	false,            // no-wait
-	//	nil,              // arguments
-	//)
-	//if err != nil {
-	//	return errors.Wrap(err, "failed declaration an exchange")
-	//}
 
 	return nil
 }
@@ -256,4 +243,9 @@ func (m *Manager) DoGatewayRPC(gatewayID string, request *entities.IotMessage) (
 	}
 
 	return response, nil
+}
+
+// GetGatewayChannel returns gateway channel interface
+func (m *Manager) GetGatewayChannel(gatewayID string) io.ReadWriteCloser {
+	return m.gwChans.Get(gatewayID)
 }

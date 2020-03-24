@@ -133,46 +133,50 @@ func (c *GatewayChannel) Start() {
 				}
 
 				// Start processing incoming message in a separate goroutine
-				go func(message entities.IotMessage) {
-					iotmessage := &message
-					// Load business logic if gateway is online and registered in database
-					if c.bl == nil {
-						exists, err := c.CheckGatewayExistence(iotmessage)
-						if err != nil {
-							logger.Error("error checking gateway in database",
-								"error", err,
-								"gateway", c.gatewayID,
-								"caller", "GatewayChannel")
-							return
-						}
-						if !exists {
-							logger.Warn("Gateway is not registered in cloud database",
-								"gateway", c.gatewayID,
-								"caller", "GatewayChannel")
-							return
-						}
-
-						// Create business logic
-						c.bl, err = c.CreateLogic()
-						if err != nil {
-							logger.Error("cannot load business logic params",
-								"error", err,
-								"gateway", c.gatewayID,
-								"caller", "GatewayChannel")
-						}
-					}
-
-					// Process incoming message
-					if err := c.bl.Process(iotmessage); err != nil {
-						logger.Error("error processing message",
-							"error", err,
-							"gateway", c.gatewayID,
-							"caller", "GatewayChannel")
-					}
-				}(*inputEnvelope.Message)
+				go c.ApplyLogic(*inputEnvelope.Message)
 			}
 		}
 	}()
+}
+
+// ApplyLogic checks gateway, loads business logic and starts processing
+func (c *GatewayChannel) ApplyLogic(message entities.IotMessage) {
+
+	iotmessage := &message
+	// Load business logic if gateway is online and registered in database
+	if c.bl == nil {
+		exists, err := c.CheckGatewayExistence(iotmessage)
+		if err != nil {
+			logger.Error("error checking gateway in database",
+				"error", err,
+				"gateway", c.gatewayID,
+				"caller", "GatewayChannel")
+			return
+		}
+		if !exists {
+			logger.Warn("Gateway is not registered in cloud database",
+				"gateway", c.gatewayID,
+				"caller", "GatewayChannel")
+			return
+		}
+
+		// Create business logic
+		c.bl, err = c.CreateLogic()
+		if err != nil {
+			logger.Error("cannot load business logic params",
+				"error", err,
+				"gateway", c.gatewayID,
+				"caller", "GatewayChannel")
+		}
+	}
+
+	// Process incoming message
+	if err := c.bl.Process(iotmessage); err != nil {
+		logger.Error("error processing message",
+			"error", err,
+			"gateway", c.gatewayID,
+			"caller", "GatewayChannel")
+	}
 }
 
 // CreateLogic function creates business logic and loads params
@@ -257,4 +261,9 @@ func (c *GatewayChannel) DoRPC(request *entities.IotMessage) (response *entities
 
 	// Return response to caller
 	return nil, nil
+}
+
+// GetLogic returns business logic for gateway channel
+func (c GatewayChannel) GetLogic() interfaces.Logic {
+	return c.bl
 }
