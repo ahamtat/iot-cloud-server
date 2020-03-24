@@ -2,17 +2,14 @@ package messages
 
 import (
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
-	"time"
 )
 
-func NewStatusMessage(gatewayId, status string) *entities.IotMessage {
-	return &entities.IotMessage{
-		Timestamp:  entities.CreateTimestampMs(time.Now()),
-		Vendor:     "Veedo",
-		Version:    entities.VeedoVersion,
-		GatewayId:  gatewayId,
-		ClientType: "veedoCloud",
-		Protocol:   "amqp",
-		Status:     status,
-	}
+// NewStatusMessage creates status message
+func NewStatusMessage(gatewayID, status string) *entities.IotMessage {
+
+	message := entities.CreateCloudIotMessage(gatewayID, "")
+	message.Protocol = "amqp"
+	message.Status = status
+
+	return message
 }

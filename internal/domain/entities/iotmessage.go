@@ -55,8 +55,8 @@ func CreateTimestampMs(t time.Time) string {
 	return strconv.Itoa(int(t.UnixNano() / int64(time.Millisecond)))
 }
 
-// CreateCloudIoMessage creates IoT message and fills it with cloud params
-func CreateCloudIoMessage(gatewayID, deviceID string) *IotMessage {
+// CreateCloudIotMessage creates IoT message and fills it with cloud params
+func CreateCloudIotMessage(gatewayID, deviceID string) *IotMessage {
 	return &IotMessage{
 		Timestamp:  CreateTimestampMs(time.Now().Local()),
 		Vendor:     VendorName,

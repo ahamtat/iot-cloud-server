@@ -2,6 +2,7 @@ package messages
 
 import "github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 
+// NewPushMessage create message for Push Notification service
 func NewPushMessage(deviceType, title, content string, deviceTableId, userId uint64) *entities.IotMessage {
 	return &entities.IotMessage{
 		DeviceType:    deviceType,

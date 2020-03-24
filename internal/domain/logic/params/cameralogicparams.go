@@ -1,8 +1,6 @@
 package params
 
 import (
-	"time"
-
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 )
 
@@ -48,14 +46,11 @@ func (p CameraLogicParams) ToMessage(recording bool) *entities.IotMessage {
 	if recording {
 		recMode = "on"
 	}
-	return &entities.IotMessage{
-		Timestamp:       entities.CreateTimestampMs(time.Now()),
-		Vendor:          "Veedo",
-		Version:         entities.VeedoVersion,
-		ClientType:      "veedoCloud",
-		DeviceId:        p.DeviceId,
-		MediaserverIp:   p.MediaserverIp,
-		ApplicationName: p.ApplicationName,
-		Recording:       recMode,
-	}
+
+	message := entities.CreateCloudIotMessage("", p.DeviceId)
+	message.MediaserverIp = p.MediaserverIp
+	message.ApplicationName = p.ApplicationName
+	message.Recording = recMode
+
+	return message
 }

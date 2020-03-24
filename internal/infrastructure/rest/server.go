@@ -83,17 +83,12 @@ func (s *Server) handleGatewayConfigure(c *gin.Context) {
 	logger.Debug("Getting gateway configure", "gateway", gatewayID)
 
 	// Create RPC request for gateway
-	request := &entities.IotMessage{
-		Timestamp:   entities.CreateTimestampMs(time.Now().Local()),
-		Vendor:      entities.VendorName,
-		Version:     entities.VeedoVersion,
-		GatewayId:   gatewayID,
-		ClientType:  "veedoCloud",
-		DeviceType:  "gateway",
-		Protocol:    "amqp",
-		MessageType: "configurationData",
-		Command:     "get",
-	}
+	request := entities.CreateCloudIotMessage(gatewayID, "")
+	request.DeviceType = "gateway"
+	request.Protocol = "amqp"
+	request.MessageType = "configurationData"
+	request.Command = "get"
+
 	response, err := s.mgr.DoGatewayRPC(gatewayID, request)
 	if err != nil {
 		errorText := "gateway RPC request failed"
@@ -154,7 +149,7 @@ func (s *Server) handleCommand(c *gin.Context) {
 
 		case "switch":
 			// Create gateway message to turn on/off smart plug
-			message := entities.CreateCloudIoMessage(gatewayID, data.DeviceID)
+			message := entities.CreateCloudIotMessage(gatewayID, data.DeviceID)
 			message.DeviceType = "sensor"
 			message.Protocol = "zwave"
 			message.MessageType = "command"
@@ -166,7 +161,7 @@ func (s *Server) handleCommand(c *gin.Context) {
 
 		case "setRecording":
 			// Create message to logic processor
-			message := entities.CreateCloudIoMessage(gatewayID, data.DeviceID)
+			message := entities.CreateCloudIotMessage(gatewayID, data.DeviceID)
 			message.DeviceType = "camera"
 			message.Protocol = "onvif"
 			message.MessageType = "command"
