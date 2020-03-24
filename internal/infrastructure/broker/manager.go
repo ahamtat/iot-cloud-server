@@ -241,7 +241,7 @@ func (m *Manager) ProcessExchangeEvents(ctx context.Context, dbConn *database.Co
 
 // DoGatewayRPC sends command for gateway via RabbitMQ broker and
 // blocks execution until response or timeout
-func (m *Manager) DoGatewayRPC(gatewayID string, request *entities.IotMessage) ([]byte, error) {
+func (m *Manager) DoGatewayRPC(gatewayID string, request *entities.IotMessage) (*entities.IotMessage, error) {
 
 	// Getting gateway channel from map
 	gwChan, ok := m.gwChans.Get(gatewayID).(*GatewayChannel)

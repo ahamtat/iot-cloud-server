@@ -86,7 +86,7 @@ func (s *Server) Init() error {
 			return
 		}
 
-		c.String(http.StatusOK, string(response))
+		c.JSON(http.StatusOK, response)
 	})
 
 	// Send command to gateway

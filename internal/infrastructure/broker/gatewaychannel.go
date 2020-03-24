@@ -3,6 +3,7 @@ package broker
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
@@ -22,15 +23,25 @@ import (
 // GatewayChannel structure keeps data for
 // gateway channel i/o and message processing
 type GatewayChannel struct {
-	serverID  string
-	gatewayID string
-	conn      *database.Connection
-	out       *AmqpReader
-	in        *AmqpWriter
-	ctx       context.Context
-	cancel    context.CancelFunc
-	bl        interfaces.Logic
+	serverID   string
+	gatewayID  string
+	conn       *database.Connection
+	out        *AmqpReader
+	in         *AmqpWriter
+	ctx        context.Context
+	cancel     context.CancelFunc
+	rpcMx      sync.Mutex
+	rpcCalls   rpcPendingCallMap
+	rpcTimeout time.Duration
+	bl         interfaces.Logic
 }
+
+type rpcPendingCall struct {
+	done chan bool
+	data *entities.IotMessage
+}
+
+type rpcPendingCallMap map[string]*rpcPendingCall
 
 // NewGatewayChannel function for GatewayChannel structure construction
 func NewGatewayChannel(amqpConn *amqp.Connection, dbConn *database.Connection, serverID, gatewayID string) interfaces.Channel {
@@ -48,14 +59,17 @@ func NewGatewayChannel(amqpConn *amqp.Connection, dbConn *database.Connection, s
 	}
 
 	return &GatewayChannel{
-		serverID:  serverID,
-		gatewayID: gatewayID,
-		conn:      dbConn,
-		out:       out,
-		in:        in,
-		ctx:       ctx,
-		cancel:    cancel,
-		bl:        nil, // Do not create business logic until gateway status come
+		serverID:   serverID,
+		gatewayID:  gatewayID,
+		conn:       dbConn,
+		out:        out,
+		in:         in,
+		ctx:        ctx,
+		cancel:     cancel,
+		rpcMx:      sync.Mutex{},
+		rpcCalls:   make(rpcPendingCallMap),
+		rpcTimeout: 5 * time.Second,
+		bl:         nil, // Do not create business logic until gateway status come
 	}
 }
 
@@ -95,17 +109,28 @@ func (c *GatewayChannel) Start() {
 				break OUTER
 			default:
 				// Read input message
-				inputEnvelope, close, err := c.out.ReadEnvelope()
+				inputEnvelope, toBeClosed, err := c.out.ReadEnvelope()
 				if err != nil {
 					logger.Error("error reading channel", "error", err)
 					continue
 				}
-				if close {
+				if toBeClosed {
 					// Reading channel possibly is to be closed
 					continue
 				}
 
 				// Check for RPC responses
+				if len(inputEnvelope.Metadata.CorrelationID) > 0 {
+					// Make pending call
+					c.rpcMx.Lock()
+					rpcCall, ok := c.rpcCalls[inputEnvelope.Metadata.CorrelationID]
+					c.rpcMx.Unlock()
+					if ok {
+						rpcCall.data = inputEnvelope.Message
+						rpcCall.done <- true
+					}
+					continue
+				}
 
 				// Start processing incoming message in a separate goroutine
 				go func(message entities.IotMessage) {
@@ -193,7 +218,7 @@ func (c *GatewayChannel) Stop() {
 
 // DoRPC sends command for gateway via RabbitMQ broker and
 // blocks execution until response or timeout
-func (c *GatewayChannel) DoRPC(request *entities.IotMessage) ([]byte, error) {
+func (c *GatewayChannel) DoRPC(request *entities.IotMessage) (response *entities.IotMessage, err error) {
 
 	// Create message envelope
 	correlationID := CreateCorrelationID()
@@ -206,12 +231,29 @@ func (c *GatewayChannel) DoRPC(request *entities.IotMessage) ([]byte, error) {
 	}
 
 	// Write envelope to broker
-	err := c.in.WriteEnvelope(env)
+	err = c.in.WriteEnvelope(env)
 	if err != nil {
 		return nil, errors.Wrap(err, "error writing RPC buffer to broker")
 	}
 
-	// Wait until response comes
+	// Create and keep pending object
+	rpcCall := &rpcPendingCall{done: make(chan bool)}
+	c.rpcMx.Lock()
+	c.rpcCalls[correlationID] = rpcCall
+	c.rpcMx.Unlock()
+
+	// Wait until response comes or timeout
+	select {
+	case <-rpcCall.done:
+		response = rpcCall.data
+	case <-time.After(c.rpcTimeout):
+		err = errors.New("timeout elapsed on RPC request sending")
+	}
+
+	// Release pending object
+	c.rpcMx.Lock()
+	delete(c.rpcCalls, correlationID)
+	c.rpcMx.Unlock()
 
 	// Return response to caller
 	return nil, nil

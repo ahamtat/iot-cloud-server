@@ -11,5 +11,5 @@ type Channel interface {
 	io.ReadWriteCloser
 	Start()
 	Stop()
-	DoRPC(request *entities.IotMessage) ([]byte, error)
+	DoRPC(request *entities.IotMessage) (*entities.IotMessage, error)
 }
