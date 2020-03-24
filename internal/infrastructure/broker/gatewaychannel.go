@@ -2,9 +2,7 @@ package broker
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"sync"
+	"fmt"
 	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
@@ -27,8 +25,8 @@ type GatewayChannel struct {
 	serverID  string
 	gatewayID string
 	conn      *database.Connection
-	out       io.ReadCloser
-	in        io.WriteCloser
+	out       *AmqpReader
+	in        *AmqpWriter
 	ctx       context.Context
 	cancel    context.CancelFunc
 	bl        interfaces.Logic
@@ -86,21 +84,10 @@ func (c *GatewayChannel) Close() error {
 	return nil
 }
 
-// PrintMessage prints incoming message to log
-func (c GatewayChannel) PrintMessage(message entities.IotMessage) {
-	// Slim long preview
-	if len(message.Preview) > 0 {
-		message.Preview = "Some Base64 code ;)"
-	}
-	logger.Debug("Message from gateway", "message", message, "gateway", c.gatewayID)
-}
-
 // Start functions make separate goroutine for message receiving and processing
 func (c *GatewayChannel) Start() {
 	// Read and process messages from gateway
 	go func() {
-		var mx sync.Mutex
-		buffer := make([]byte, 50*1024)
 	OUTER:
 		for {
 			select {
@@ -108,32 +95,17 @@ func (c *GatewayChannel) Start() {
 				break OUTER
 			default:
 				// Read input message
-				inputMessage := entities.IotMessage{}
-				mx.Lock()
-				length, err := c.Read(buffer)
+				inputEnvelope, close, err := c.out.ReadEnvelope()
 				if err != nil {
 					logger.Error("error reading channel", "error", err)
-					mx.Unlock()
 					continue
 				}
-				if length == 0 && err == nil {
+				if close {
 					// Reading channel possibly is to be closed
-					mx.Unlock()
 					continue
 				}
 
-				// Unmarshal input message from JSON
-				err = json.Unmarshal(buffer[:length], &inputMessage)
-				if err != nil {
-					logger.Error("can not unmarshal incoming gateway message",
-						"error", err,
-						"gateway", c.gatewayID)
-					mx.Unlock()
-					continue
-				}
-				// Print copy of incoming message to log
-				c.PrintMessage(inputMessage)
-				mx.Unlock()
+				// Check for RPC responses
 
 				// Start processing incoming message in a separate goroutine
 				go func(message entities.IotMessage) {
@@ -172,7 +144,7 @@ func (c *GatewayChannel) Start() {
 							"gateway", c.gatewayID,
 							"caller", "GatewayChannel")
 					}
-				}(inputMessage)
+				}(*inputEnvelope.Message)
 			}
 		}
 	}()
@@ -217,4 +189,30 @@ func (c *GatewayChannel) Stop() {
 	// Change gateway and all its devices statuses to offline in database
 	statusMessage := messages.NewStatusMessage(c.gatewayID, "off")
 	tasks.NewUpdateGatewayStatusTask(c.conn).Run(statusMessage)
+}
+
+// DoRPC sends command for gateway via RabbitMQ broker and
+// blocks execution until response or timeout
+func (c *GatewayChannel) DoRPC(request *entities.IotMessage) ([]byte, error) {
+
+	// Create message envelope
+	correlationID := CreateCorrelationID()
+	env := &AmqpEnvelope{
+		Message: request,
+		Metadata: &AmqpMetadata{
+			CorrelationID: correlationID,
+			ReplyTo:       fmt.Sprintf("%s.out", c.gatewayID),
+		},
+	}
+
+	// Write envelope to broker
+	err := c.in.WriteEnvelope(env)
+	if err != nil {
+		return nil, errors.Wrap(err, "error writing RPC buffer to broker")
+	}
+
+	// Wait until response comes
+
+	// Return response to caller
+	return nil, nil
 }

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
+
 	"github.com/pkg/errors"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
@@ -235,4 +237,23 @@ func (m *Manager) ProcessExchangeEvents(ctx context.Context, dbConn *database.Co
 			}
 		}
 	}
+}
+
+// DoGatewayRPC sends command for gateway via RabbitMQ broker and
+// blocks execution until response or timeout
+func (m *Manager) DoGatewayRPC(gatewayID string, request *entities.IotMessage) ([]byte, error) {
+
+	// Getting gateway channel from map
+	gwChan, ok := m.gwChans.Get(gatewayID).(*GatewayChannel)
+	if gwChan == nil || !ok {
+		return nil, errors.New("error getting channel with specified gatewayID")
+	}
+
+	// Making RPC for gateway channel
+	response, err := gwChan.DoRPC(request)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed making RPC to gateway channel")
+	}
+
+	return response, nil
 }

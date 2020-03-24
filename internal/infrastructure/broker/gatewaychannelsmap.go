@@ -35,7 +35,7 @@ func (gc *GatewayChannelsMap) Add(gatewayID string, ch interfaces.Channel) {
 func (gc *GatewayChannelsMap) Get(gatewayID string) io.ReadWriteCloser {
 	var ch io.ReadWriteCloser
 	gc.mx.Lock()
-	ch = gc.channels[gatewayID]
+	ch, _ = gc.channels[gatewayID]
 	gc.mx.Unlock()
 
 	return ch

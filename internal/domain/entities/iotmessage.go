@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-// IoT-gateway message representation
+// IotMessage structure to represent IoT-gateway message
 type IotMessage struct {
 	Timestamp       string `json:"timestampMs,omitempty"`
 	Vendor          string `json:"vendor,omitempty"`
@@ -40,14 +40,17 @@ type IotMessage struct {
 	Status          string `json:"status,omitempty"`
 }
 
+// GetSensorType returns type of sensor
 func (m IotMessage) GetSensorType() string {
 	return strings.ReplaceAll(m.SensorType, " ", "_")
 }
 
+// GetLabel returns sensor label
 func (m IotMessage) GetLabel() string {
 	return strings.ReplaceAll(m.Label, " ", "_")
 }
 
+// CreateTimestampMs returns UNIX time in milliseconds
 func CreateTimestampMs(t time.Time) string {
 	return strconv.Itoa(int(t.UnixNano() / int64(time.Millisecond)))
 }
