@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
-	"flag"
 	"fmt"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/application"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/rest"
@@ -16,30 +16,11 @@ import (
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/broker"
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 func init() {
-	// using standard library "flag" package
-	flag.String("config", "../../configs/gocloudserver.dev.yaml", "path to configuration flag")
-
-	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
-	pflag.Parse()
-	_ = viper.BindPFlags(pflag.CommandLine)
-
-	// Reading configuration from file
-	configPath := viper.GetString("config") // retrieve value from viper
-	viper.SetConfigFile(configPath)
-	if err := viper.ReadInConfig(); err != nil {
-		log.Fatalf("Couldn't read configuration file: %s", err.Error())
-	}
-
-	// Setting log parameters
-	logger.Init(
-		viper.GetString("log.log_level"),
-		viper.GetString("log.log_file"),
-		viper.GetBool("log.log_rotate"))
+	application.Init("../../configs/gocloudserver.dev.yaml")
 }
 
 func main() {
