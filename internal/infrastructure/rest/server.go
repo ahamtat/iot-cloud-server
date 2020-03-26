@@ -42,6 +42,7 @@ type commandData struct {
 	Money       uint64   `json:"money,omitempty"`
 	Vip         bool     `json:"vip,omitempty"`
 	LegalEntity bool     `json:"isLegalEntity,omitempty"`
+	UserID      uint64   `json:"userId,omitempty"`
 }
 
 // NewServer constructs and initializes REST server
@@ -113,6 +114,8 @@ func (s *Server) handleGatewayConfigure(c *gin.Context) {
 // curl -ki -X POST -H "Content-Type: application/json" -H "Authorization: Basic YmFuZGVyc25hdGNoOnNpM25ZUHpqeU4=" -d '{"command": "switch", "attribute": "on", "deviceId": "20873eb0-dd5e-4213-a175-b99fbbad3118", "gatewayIds": ["6774f85a-0a5b-4059-9b68-9385ecbdcf8e"]}' http://127.0.0.1:2020/api/v3/command
 // Test Wowza recording:
 // curl -ki -X POST -H "Content-Type: application/json" -H "Authorization: Basic YmFuZGVyc25hdGNoOnNpM25ZUHpqeU4=" -d '{"command": "setRecording", "attribute": "continuous", "gatewayIds": ["6774f85a-0a5b-4059-9b68-9385ecbdcf8e"], "deviceId": "1616453d-30cd-44b7-9bf0-5b7aac54b488", "tariffId": 103, "money": 3355, "vip": false, "isLegalEntity": false}' http://127.0.0.1:2020/api/v3/command
+// Test push notification:
+// curl -ki -X POST -H "Content-Type: application/json" -H "Authorization: Basic YmFuZGVyc25hdGNoOnNpM25ZUHpqeU4=" -d '{"command": "push", "attribute": "on", "gatewayIds": ["6774f85a-0a5b-4059-9b68-9385ecbdcf8e"], "userId": 649}, ' http://127.0.0.1:2020/api/v3/command
 func (s *Server) handleCommand(c *gin.Context) {
 
 	// Parse command data from JSON body
