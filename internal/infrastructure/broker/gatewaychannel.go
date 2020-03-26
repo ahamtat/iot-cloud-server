@@ -109,21 +109,20 @@ func (c *GatewayChannel) Close() error {
 func (c *GatewayChannel) Start() {
 	// Read and process messages from gateway
 	go func() {
-	OUTER:
 		for {
 			select {
 			case <-c.ctx.Done():
-				break OUTER
+				return
 			default:
 				// Read input message
 				inputEnvelope, toBeClosed, err := c.out.ReadEnvelope()
 				if err != nil {
 					logger.Error("error reading channel", "error", err)
-					continue
+					break
 				}
 				if toBeClosed {
 					// Reading channel possibly is to be closed
-					continue
+					break
 				}
 
 				// Check for RPC responses
@@ -136,7 +135,7 @@ func (c *GatewayChannel) Start() {
 						rpcCall.data = inputEnvelope.Message
 						rpcCall.done <- true
 					}
-					continue
+					break
 				}
 
 				// Start processing incoming message in a separate goroutine
