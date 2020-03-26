@@ -85,6 +85,13 @@ func (c *GatewayChannel) Write(p []byte) (n int, err error) {
 func (c *GatewayChannel) Close() error {
 	c.Stop()
 
+	// Close pending calls to quit blocked goroutines
+	c.rpcMx.Lock()
+	for _, call := range c.rpcCalls {
+		close(call.done)
+	}
+	c.rpcMx.Unlock()
+
 	// Close i/o channels
 	if err := c.out.Close(); err != nil {
 		logger.Error("error closing gateway output channel",
