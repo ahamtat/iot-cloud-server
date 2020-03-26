@@ -35,8 +35,9 @@ func NewRecordMediaStreamTask() interfaces.Task {
 // send RESTful Wowza recording commands
 func (t *RecordMediaStreamTask) Run(message *entities.IotMessage) {
 	go func() {
-		if len(message.GatewayId) == 0 || len(message.DeviceId) == 0 {
-			logger.Error("no sender defined", "caller", "RecordMediaStreamTask")
+		if len(message.DeviceId) == 0 {
+			logger.Error("no sender defined",
+				"message", message, "caller", "RecordMediaStreamTask")
 			return
 		}
 

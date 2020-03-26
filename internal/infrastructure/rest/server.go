@@ -111,6 +111,8 @@ func (s *Server) handleGatewayConfigure(c *gin.Context) {
 // Send command to external services (WSE, Push Notification, gateway)
 // Test power switch:
 // curl -ki -X POST -H "Content-Type: application/json" -H "Authorization: Basic YmFuZGVyc25hdGNoOnNpM25ZUHpqeU4=" -d '{"command": "switch", "attribute": "on", "deviceId": "20873eb0-dd5e-4213-a175-b99fbbad3118", "gatewayIds": ["6774f85a-0a5b-4059-9b68-9385ecbdcf8e"]}' http://127.0.0.1:2020/api/v3/command
+// Test Wowza recording:
+// curl -ki -X POST -H "Content-Type: application/json" -H "Authorization: Basic YmFuZGVyc25hdGNoOnNpM25ZUHpqeU4=" -d '{"command": "setRecording", "attribute": "continuous", "gatewayIds": ["6774f85a-0a5b-4059-9b68-9385ecbdcf8e"], "deviceId": "1616453d-30cd-44b7-9bf0-5b7aac54b488", "tariffId": 103, "money": 3355, "vip": false, "isLegalEntity": false}' http://127.0.0.1:2020/api/v3/command
 func (s *Server) handleCommand(c *gin.Context) {
 
 	// Parse command data from JSON body
@@ -186,6 +188,7 @@ func (s *Server) handleCommand(c *gin.Context) {
 		errorText := "no gateways found"
 		logger.Error(errorText, "gateways", data.GatewayIds)
 		c.String(http.StatusNotFound, errorText)
+		return
 	}
 
 	c.String(http.StatusOK, "OK")

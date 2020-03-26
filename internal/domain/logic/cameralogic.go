@@ -47,19 +47,19 @@ func (l *GatewayLogic) processCameraState(message *entities.IotMessage) error {
 			return nil
 		}
 		message.Recording = "on"
-		//// Store mediaserver params
-		//cameraLogicParams.MediaserverIp = message.MediaserverIp
-		//cameraLogicParams.ApplicationName = message.ApplicationName
-		//cameraLogicParams.MediaserverParamsSet = true
+		// Store mediaserver params
+		cameraLogicParams.MediaserverIp = message.MediaserverIp
+		cameraLogicParams.ApplicationName = message.ApplicationName
+		cameraLogicParams.MediaserverParamsSet = true
 	case "streamingOff":
 		message.Recording = "off"
-		//// Restore mediaserver params
-		//message.MediaserverIp = cameraLogicParams.MediaserverIp
-		//message.ApplicationName = cameraLogicParams.ApplicationName
-		//// Clear mediaserver params
-		//cameraLogicParams.MediaserverIp = ""
-		//cameraLogicParams.ApplicationName = ""
-		//cameraLogicParams.MediaserverParamsSet = false
+		// Restore mediaserver params
+		message.MediaserverIp = cameraLogicParams.MediaserverIp
+		message.ApplicationName = cameraLogicParams.ApplicationName
+		// Clear mediaserver params
+		cameraLogicParams.MediaserverIp = ""
+		cameraLogicParams.ApplicationName = ""
+		cameraLogicParams.MediaserverParamsSet = false
 	default:
 		return errors.New("wrong deviceState: " + message.DeviceState)
 	}
