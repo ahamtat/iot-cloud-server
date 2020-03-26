@@ -271,6 +271,6 @@ func (c *GatewayChannel) DoRPC(request *entities.IotMessage) (response *entities
 }
 
 // GetLogic returns business logic for gateway channel
-func (c GatewayChannel) GetLogic() interfaces.Logic {
+func (c *GatewayChannel) GetLogic() interfaces.Logic {
 	return c.bl
 }
