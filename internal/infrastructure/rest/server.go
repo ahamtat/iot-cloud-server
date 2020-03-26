@@ -77,6 +77,8 @@ func (s *Server) handleInfo(c *gin.Context) {
 }
 
 // Get gateway configure
+// Test with:
+// curl -ki -X GET -H "Content-Type: application/json" -H "Authorization: Basic YmFuZGVyc25hdGNoOnNpM25ZUHpqeU4=" http://127.0.0.1:2020/api/v3/gateway/configure/6774f85a-0a5b-4059-9b68-9385ecbdcf8e
 func (s *Server) handleGatewayConfigure(c *gin.Context) {
 
 	gatewayID := c.Param("gatewayId")
@@ -107,6 +109,8 @@ func (s *Server) handleGatewayConfigure(c *gin.Context) {
 }
 
 // Send command to external services (WSE, Push Notification, gateway)
+// Test power switch:
+// curl -ki -X POST -H "Content-Type: application/json" -H "Authorization: Basic YmFuZGVyc25hdGNoOnNpM25ZUHpqeU4=" -d '{"command": "switch", "attribute": "on", "deviceId": "20873eb0-dd5e-4213-a175-b99fbbad3118", "gatewayIds": ["6774f85a-0a5b-4059-9b68-9385ecbdcf8e"]}' http://127.0.0.1:2020/api/v3/command
 func (s *Server) handleCommand(c *gin.Context) {
 
 	// Parse command data from JSON body
