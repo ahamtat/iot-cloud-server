@@ -266,7 +266,7 @@ func (c *GatewayChannel) DoRPC(request *entities.IotMessage) (response *entities
 	c.rpcMx.Unlock()
 
 	// Return response to caller
-	return nil, nil
+	return
 }
 
 // GetLogic returns business logic for gateway channel
