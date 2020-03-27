@@ -108,7 +108,7 @@ func (t *RecordMediaStreamTask) Run(message *entities.IotMessage) {
 
 		// Create HTTP client
 		client := http.Client{
-			Timeout: time.Duration(5 * time.Second),
+			Timeout: 5 * time.Second,
 		}
 
 		// Send request
