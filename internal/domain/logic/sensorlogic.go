@@ -54,7 +54,7 @@ func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
 	// Inform user about sensor event
 	if message.SensorData == "on" && innerParams.Notify && l.UserParams.Push {
 		pushMessage := messages.NewPushMessage(
-			"device",
+			"sensor",
 			sensorLogicParams.Title,
 			innerParams.Desc,
 			sensorLogicParams.DeviceTableId,

@@ -65,11 +65,11 @@ func NewSendPushNotificationTask(conn *database.Connection) interfaces.Task {
 func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 	go func() {
 		// Check input data
-		if len(message.GatewayId) == 0 || len(message.DeviceId) == 0 {
+		if message.DeviceTableId == 0 {
 			logger.Error("no sender defined", "caller", "SendPushNotificationTask")
 			return
 		}
-		if message.DeviceType != "sensor" {
+		if message.DeviceType != "camera" && message.DeviceType != "sensor" {
 			logger.Error("wrong device type", "deviceType", message.DeviceType,
 				"caller", "SendPushNotificationTask")
 			return
