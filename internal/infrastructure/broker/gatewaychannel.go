@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/spf13/viper"
+
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
 	"github.com/pkg/errors"
@@ -68,7 +70,7 @@ func NewGatewayChannel(amqpConn *amqp.Connection, dbConn *database.Connection, s
 		cancel:     cancel,
 		rpcMx:      sync.Mutex{},
 		rpcCalls:   make(rpcPendingCallMap),
-		rpcTimeout: 5 * time.Second,
+		rpcTimeout: viper.GetDuration("amqp.rpcTimeout"),
 		bl:         nil, // Do not create business logic until gateway status come
 	}
 }
@@ -197,7 +199,8 @@ func (c *GatewayChannel) CreateLogic() (interfaces.Logic, error) {
 // CheckGatewayExistence checks for gateway records in database and update devices statuses
 func (c *GatewayChannel) CheckGatewayExistence(message *entities.IotMessage) (bool, error) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// Wrap context with timeout value for database interactions
+	ctx, cancel := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
 	defer cancel()
 
 	// Search gateway in database

@@ -2,7 +2,8 @@ package tasks
 
 import (
 	"context"
-	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
@@ -44,10 +45,13 @@ func (t *UpdateGatewayStatusTask) Run(message *entities.IotMessage) {
 			return
 		}
 
+		// Wrap context with timeout value for database interactions
+		ctx1, cancel1 := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
+		defer cancel1()
+
 		// Update gateway status in database
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 		updateQueryText := `update v3_gateways set status = ? where gateway_id = ?`
-		_, err := t.conn.Db.ExecContext(ctx, updateQueryText, message.Status, message.GatewayId)
+		_, err := t.conn.Db.ExecContext(ctx1, updateQueryText, message.Status, message.GatewayId)
 		if err != nil {
 			logger.Error("error updating gateway status in database",
 				"error", err, "gateway", message.GatewayId, "caller", "UpdateGatewayStatusTask")
@@ -56,10 +60,13 @@ func (t *UpdateGatewayStatusTask) Run(message *entities.IotMessage) {
 				"gateway", message.GatewayId, "caller", "UpdateGatewayStatusTask")
 		}
 
+		// Wrap context with timeout value for database interactions
+		ctx2, cancel2 := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
+		defer cancel2()
+
 		// Update devices statuses
-		ctx, _ = context.WithTimeout(context.Background(), 5*time.Second)
 		updateQueryText = `update v3_devices set state = ? where gateway_id = ?`
-		_, err = t.conn.Db.ExecContext(ctx, updateQueryText, statusInt, message.GatewayId)
+		_, err = t.conn.Db.ExecContext(ctx2, updateQueryText, statusInt, message.GatewayId)
 		if err != nil {
 			logger.Error("error updating devices statuses in database",
 				"error", err, "caller", "UpdateGatewayStatusTask")
@@ -70,9 +77,12 @@ func (t *UpdateGatewayStatusTask) Run(message *entities.IotMessage) {
 
 		// Update cameras off statuses
 		if statusInt == 0 {
-			ctx, _ = context.WithTimeout(context.Background(), 5*time.Second)
+			// Wrap context with timeout value for database interactions
+			ctx3, cancel3 := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
+			defer cancel3()
+
 			updateQueryText = `update camers set onair = ? where gateway_id = ?`
-			_, err = t.conn.Db.ExecContext(ctx, updateQueryText, statusInt, message.GatewayId)
+			_, err = t.conn.Db.ExecContext(ctx3, updateQueryText, statusInt, message.GatewayId)
 			if err != nil {
 				logger.Error("error updating cameras off statuses in database",
 					"error", err, "caller", "UpdateGatewayStatusTask")

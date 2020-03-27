@@ -5,7 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
-	"time"
+
+	"github.com/spf13/viper"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
 
@@ -41,13 +42,16 @@ func NewGatewayLogic(ctx context.Context, conn *database.Connection, gatewayId s
 }
 
 func (l *GatewayLogic) LoadParams(writer io.Writer) error {
+	var err error
+
 	// Check input params
 	if writer == nil {
 		return errors.New("wrong input parameter")
 	}
 
 	// Wrap context with timeout value for database interactions
-	ctx, _ := context.WithTimeout(l.ctx, 5*time.Second)
+	ctx1, cancel1 := context.WithTimeout(l.ctx, viper.GetDuration("db.cloud.timeout"))
+	defer cancel1()
 
 	// Load user params
 	userParamsQueryText :=
@@ -57,12 +61,13 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 			INNER JOIN users AS usr
 				ON gw.user_id = usr.id
 		WHERE gw.gateway_id = ?;`
-	if err := l.conn.Db.GetContext(ctx, &l.UserParams, userParamsQueryText, l.gatewayId); err != nil {
+	if err = l.conn.Db.GetContext(ctx1, &l.UserParams, userParamsQueryText, l.gatewayId); err != nil {
 		return errors.Wrap(err, "failed to query user params")
 	}
 
-	// Renew context
-	ctx, _ = context.WithTimeout(l.ctx, 5*time.Second)
+	// Wrap context with timeout value for database interactions
+	ctx2, cancel2 := context.WithTimeout(l.ctx, viper.GetDuration("db.cloud.timeout"))
+	defer cancel2()
 
 	// Load cameras params
 	cameraParamsQueryText :=
@@ -74,7 +79,7 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 			INNER JOIN users AS usr
 				ON cam.uid = usr.id
 			WHERE gw.gateway_id = ?;`
-	cameraRows, err := l.conn.Db.QueryContext(ctx, cameraParamsQueryText, l.gatewayId)
+	cameraRows, err := l.conn.Db.QueryContext(ctx2, cameraParamsQueryText, l.gatewayId)
 	if err != nil {
 		return errors.Wrap(err, "failed to query camera params")
 	}
@@ -97,8 +102,9 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 	}
 	_ = cameraRows.Close()
 
-	// Renew context
-	ctx, _ = context.WithTimeout(l.ctx, 30*time.Second)
+	// Wrap context with timeout value for database interactions
+	ctx3, cancel3 := context.WithTimeout(l.ctx, viper.GetDuration("db.cloud.timeout"))
+	defer cancel3()
 
 	// Load sensors params
 	sensorParamsQueryText :=
@@ -107,7 +113,7 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 			INNER JOIN v3_gateways AS gw
 				ON dev.gateway_id = gw.gateway_id
 		WHERE gw.gateway_id = ?;`
-	sensorRows, err := l.conn.Db.QueryContext(ctx, sensorParamsQueryText, l.gatewayId)
+	sensorRows, err := l.conn.Db.QueryContext(ctx3, sensorParamsQueryText, l.gatewayId)
 	if err != nil {
 		return errors.Wrap(err, "failed to query sensor device params")
 	}
@@ -127,7 +133,7 @@ func (l *GatewayLogic) LoadParams(writer io.Writer) error {
 				INNER JOIN v3_devices AS dev
 					ON dev.id = sens.device_id
 			WHERE dev.id = ?;`
-		innerRows, err := l.conn.Db.QueryContext(ctx, innerParamsQueryText, p.DeviceTableId)
+		innerRows, err := l.conn.Db.QueryContext(ctx3, innerParamsQueryText, p.DeviceTableId)
 		if err != nil {
 			return errors.Wrap(err, "failed to query sensor inner params")
 		}

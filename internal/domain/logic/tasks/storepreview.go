@@ -2,12 +2,12 @@ package tasks
 
 import (
 	"context"
-	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+	"github.com/spf13/viper"
 )
 
 type StorePreviewTask struct {
@@ -32,7 +32,10 @@ func (t *StorePreviewTask) Run(message *entities.IotMessage) {
 			return
 		}
 
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		// Wrap context with timeout value for database interactions
+		ctx, cancel := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
+		defer cancel()
+
 		updateQueryText := `update camers set preview = ? where stream_id = ?`
 		_, err := t.conn.Db.ExecContext(ctx, updateQueryText, message.Preview, message.DeviceId)
 		if err != nil {

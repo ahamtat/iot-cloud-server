@@ -2,12 +2,12 @@ package tasks
 
 import (
 	"context"
-	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+	"github.com/spf13/viper"
 )
 
 type StoreSensorDataMySqlTask struct {
@@ -33,7 +33,10 @@ func (t *StoreSensorDataMySqlTask) Run(message *entities.IotMessage) {
 			return
 		}
 
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
+		// Wrap context with timeout value for database interactions
+		ctx, cancel := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
+		defer cancel()
+
 		updateQueryText :=
 			`update v3_sensors
 			set value = ?, updated_at = now()

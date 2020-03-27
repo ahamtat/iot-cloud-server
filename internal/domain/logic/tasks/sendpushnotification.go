@@ -75,8 +75,11 @@ func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 			return
 		}
 
+		// Wrap context with timeout value for database interactions
+		ctx, cancel := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
+		defer cancel()
+
 		// Get Player Ids for sending push notifications to user mobile device
-		ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 		queryText := `select player_id from v3_playerids where user_id = ?`
 		rows, err := t.conn.Db.QueryContext(ctx, queryText, message.UserId)
 		if err != nil {
@@ -140,7 +143,7 @@ func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 			return
 		}
 		request.Header.Set("Content-Type", "application/json; charset=utf-8")
-		request.Header.Set("authorization", "Basic "+t.restApiKey)
+		request.Header.Set("Authorization", "Basic "+t.restApiKey)
 
 		// Create HTTP client
 		client := http.Client{
