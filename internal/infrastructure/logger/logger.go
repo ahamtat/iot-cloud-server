@@ -4,11 +4,11 @@ import (
 	"log"
 	"sync"
 
+	"gopkg.in/natefinch/lumberjack.v2"
+
 	"go.uber.org/zap/zapcore"
 
 	"go.uber.org/zap"
-
-	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var sugar *zap.SugaredLogger
@@ -51,18 +51,6 @@ func Init(logLevel, filePath string, logRotate bool) {
 		}
 		config.Level = zap.NewAtomicLevelAt(level)
 
-		// Added logrotate syncer from
-		// https://github.com/uber-go/zap/issues/342
-		var syncer zapcore.WriteSyncer
-		if logRotate {
-			syncer = zapcore.AddSync(&lumberjack.Logger{
-				Filename:   filePath,
-				MaxSize:    1, // megabytes
-				MaxBackups: 5,
-				MaxAge:     28, // days
-			})
-		}
-
 		// Create logger
 		logger, err := config.Build() //SetOutput(syncer, config))
 		if err != nil {
@@ -76,10 +64,18 @@ func Init(logLevel, filePath string, logRotate bool) {
 			}
 		}()
 
+		sugar = logger.Sugar()
+
+		// Added logrotate syncer from
+		// https://github.com/uber-go/zap/issues/342
 		if logRotate {
+			syncer := zapcore.AddSync(&lumberjack.Logger{
+				Filename:   filePath,
+				MaxSize:    1, // megabytes
+				MaxBackups: 5,
+				MaxAge:     28, // days
+			})
 			sugar = sugar.Desugar().WithOptions(SetOutput(syncer, config)).Sugar()
-		} else {
-			sugar = logger.Sugar()
 		}
 	})
 }
