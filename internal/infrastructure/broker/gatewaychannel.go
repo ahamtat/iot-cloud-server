@@ -178,6 +178,14 @@ func (c *GatewayChannel) ApplyLogic(message entities.IotMessage) {
 		}
 	}
 
+	// Check business logic pointer for validness
+	if c.bl == nil {
+		logger.Error("business logic is not loaded",
+			"gateway", c.gatewayID,
+			"caller", "GatewayChannel")
+		return
+	}
+
 	// Process incoming message
 	if err := c.bl.Process(iotmessage); err != nil {
 		logger.Error("error processing message",
