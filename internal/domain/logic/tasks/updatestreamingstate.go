@@ -22,26 +22,24 @@ func NewUpdateCameraStreamingStateTask(conn *database.Connection) interfaces.Tas
 }
 
 func (t *UpdateCameraStreamingStateTask) Run(message *entities.IotMessage) {
-	go func() {
-		if len(message.GatewayId) == 0 || len(message.DeviceId) == 0 {
-			logger.Error("no sender defined", "caller", "UpdateCameraStreamingStateTask")
-			return
-		}
+	if len(message.GatewayId) == 0 || len(message.DeviceId) == 0 {
+		logger.Error("no sender defined", "caller", "UpdateCameraStreamingStateTask")
+		return
+	}
 
-		// Wrap context with timeout value for database interactions
-		ctx, cancel := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
-		defer cancel()
+	// Wrap context with timeout value for database interactions
+	ctx, cancel := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
+	defer cancel()
 
-		// Create update query
-		var onair int
-		if message.DeviceState == "streamingOn" {
-			onair = 1
-		}
-		updateQueryText := `update camers set onair = ? where stream_id = ?`
-		_, err := t.conn.Db.ExecContext(ctx, updateQueryText, onair, message.DeviceId)
-		if err != nil {
-			logger.Error("error updating camera streaming state",
-				"error", err, "caller", "UpdateCameraStreamingStateTask")
-		}
-	}()
+	// Create update query
+	var onair int
+	if message.DeviceState == "streamingOn" {
+		onair = 1
+	}
+	updateQueryText := `update camers set onair = ? where stream_id = ?`
+	_, err := t.conn.Db.ExecContext(ctx, updateQueryText, onair, message.DeviceId)
+	if err != nil {
+		logger.Error("error updating camera streaming state",
+			"error", err, "caller", "UpdateCameraStreamingStateTask")
+	}
 }

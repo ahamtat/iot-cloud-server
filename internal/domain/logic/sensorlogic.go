@@ -44,11 +44,11 @@ func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
 
 	// Store sensor data in MySQL
 	message.DeviceTableId = sensorLogicParams.DeviceTableId
-	tasks.NewStoreSensorDataMySqlTask(l.conn).Run(message)
+	go tasks.NewStoreSensorDataMySqlTask(l.conn).Run(message)
 
 	// Store sensor data in InfluxDB
 	if innerParams.Influx {
-		tasks.NewStoreSensorDataInfluxTask().Run(message)
+		go tasks.NewStoreSensorDataInfluxTask().Run(message)
 	}
 
 	// Inform user about sensor event
@@ -59,7 +59,7 @@ func (l *GatewayLogic) processSensorData(message *entities.IotMessage) error {
 			innerParams.Desc,
 			sensorLogicParams.DeviceTableId,
 			sensorLogicParams.UserId)
-		tasks.NewSendPushNotificationTask(l.conn).Run(pushMessage)
+		go tasks.NewSendPushNotificationTask(l.conn).Run(pushMessage)
 	}
 
 	return nil

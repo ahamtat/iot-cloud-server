@@ -234,7 +234,7 @@ func (c *GatewayChannel) Stop() {
 
 	// Change gateway and all its devices statuses to offline in database
 	statusMessage := messages.NewStatusMessage(c.gatewayID, "off")
-	tasks.NewUpdateGatewayStatusTask(c.conn).Run(statusMessage)
+	go tasks.NewUpdateGatewayStatusTask(c.conn).Run(statusMessage)
 }
 
 // DoRPC sends command for gateway via RabbitMQ broker and

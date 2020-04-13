@@ -166,7 +166,7 @@ func (s *Server) handleCommand(c *gin.Context) {
 			message.Attribute = data.Attribute
 
 			// Send message to gateway
-			tasks.NewSendGatewayMessageTask(gwChan).Run(message)
+			go tasks.NewSendGatewayMessageTask(gwChan).Run(message)
 
 		case "setRecording":
 			// Create message to logic processor

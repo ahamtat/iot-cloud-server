@@ -36,74 +36,72 @@ func NewStoreSensorDataInfluxTask() interfaces.Task {
 
 // Run extracts data from incoming message and send it via HTTP to InfluxDB database
 func (t *StoreSensorDataInfluxTask) Run(message *entities.IotMessage) {
-	go func() {
-		if len(message.GatewayId) == 0 || len(message.DeviceId) == 0 {
-			logger.Error("no sender defined", "caller", "StoreSensorDataInfluxTask")
-			return
-		}
-		if message.DeviceType != "sensor" && message.DeviceType != "camera" {
-			logger.Error("wrong device type", "deviceType", message.DeviceType,
-				"caller", "StoreSensorDataInfluxTask")
-			return
-		}
-
-		// Create InfluxDB client
-		c, err := client.NewHTTPClient(client.HTTPConfig{
-			Addr:     t.connURL,
-			Username: t.username,
-			Password: t.password,
-		})
-		if err != nil {
-			logger.Error("error creating InfluxDB client", "error", err,
-				"caller", "StoreSensorDataInfluxTask")
-			return
-		}
-		defer c.Close()
-
-		// Create a new point batch
-		dbName :=
-			"gateway_" + strings.ReplaceAll(message.GatewayId, "-", "_") + "_" +
-				message.DeviceType + "s"
-		bp, err := client.NewBatchPoints(client.BatchPointsConfig{
-			Database:  dbName,
-			Precision: "ms",
-		})
-		if err != nil {
-			logger.Error("error creating batch point", "error", err,
-				"caller", "StoreSensorDataInfluxTask")
-			return
-		}
-
-		// Create a point and add it to a batch
-		name := "device_" + strings.ReplaceAll(message.DeviceId, "-", "_")
-		tags := map[string]string{
-			"class": message.GetSensorType(),
-			"label": message.GetLabel()}
-		if len(message.Units) != 0 {
-			tags["units"] = message.Units
-		}
-		fields := map[string]interface{}{}
-		if floatValue, err := strconv.ParseFloat(message.SensorData, 64); err != nil {
-			fields["value"] = message.SensorData
-		} else {
-			fields["value_float"] = floatValue
-		}
-		//logger.Debug("Point fields", "fields", fields, "caller", "StoreSensorDataInfluxTask")
-		pt, err := client.NewPoint(name, tags, fields, time.Now())
-		if err != nil {
-			logger.Error("error creating new point", "error", err,
-				"caller", "StoreSensorDataInfluxTask")
-			return
-		}
-		logger.Debug("New point value", "value", pt,
+	if len(message.GatewayId) == 0 || len(message.DeviceId) == 0 {
+		logger.Error("no sender defined", "caller", "StoreSensorDataInfluxTask")
+		return
+	}
+	if message.DeviceType != "sensor" && message.DeviceType != "camera" {
+		logger.Error("wrong device type", "deviceType", message.DeviceType,
 			"caller", "StoreSensorDataInfluxTask")
-		bp.AddPoint(pt)
+		return
+	}
 
-		// Write the batch
-		err = c.Write(bp)
-		if err != nil {
-			logger.Error("error writing point to InfluxDB", "error", err,
-				"caller", "StoreSensorDataInfluxTask")
-		}
-	}()
+	// Create InfluxDB client
+	c, err := client.NewHTTPClient(client.HTTPConfig{
+		Addr:     t.connURL,
+		Username: t.username,
+		Password: t.password,
+	})
+	if err != nil {
+		logger.Error("error creating InfluxDB client", "error", err,
+			"caller", "StoreSensorDataInfluxTask")
+		return
+	}
+	defer c.Close()
+
+	// Create a new point batch
+	dbName :=
+		"gateway_" + strings.ReplaceAll(message.GatewayId, "-", "_") + "_" +
+			message.DeviceType + "s"
+	bp, err := client.NewBatchPoints(client.BatchPointsConfig{
+		Database:  dbName,
+		Precision: "ms",
+	})
+	if err != nil {
+		logger.Error("error creating batch point", "error", err,
+			"caller", "StoreSensorDataInfluxTask")
+		return
+	}
+
+	// Create a point and add it to a batch
+	name := "device_" + strings.ReplaceAll(message.DeviceId, "-", "_")
+	tags := map[string]string{
+		"class": message.GetSensorType(),
+		"label": message.GetLabel()}
+	if len(message.Units) != 0 {
+		tags["units"] = message.Units
+	}
+	fields := map[string]interface{}{}
+	if floatValue, err := strconv.ParseFloat(message.SensorData, 64); err != nil {
+		fields["value"] = message.SensorData
+	} else {
+		fields["value_float"] = floatValue
+	}
+	//logger.Debug("Point fields", "fields", fields, "caller", "StoreSensorDataInfluxTask")
+	pt, err := client.NewPoint(name, tags, fields, time.Now())
+	if err != nil {
+		logger.Error("error creating new point", "error", err,
+			"caller", "StoreSensorDataInfluxTask")
+		return
+	}
+	logger.Debug("New point value", "value", pt,
+		"caller", "StoreSensorDataInfluxTask")
+	bp.AddPoint(pt)
+
+	// Write the batch
+	err = c.Write(bp)
+	if err != nil {
+		logger.Error("error writing point to InfluxDB", "error", err,
+			"caller", "StoreSensorDataInfluxTask")
+	}
 }

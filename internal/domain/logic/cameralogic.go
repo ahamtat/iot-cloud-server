@@ -34,7 +34,7 @@ func (l *GatewayLogic) processCameraState(message *entities.IotMessage) error {
 	}
 
 	// Update camera state in MySQL database
-	tasks.NewUpdateCameraStateTask(l.conn).Run(message)
+	go tasks.NewUpdateCameraStateTask(l.conn).Run(message)
 
 	switch message.DeviceState {
 	case "on":
@@ -67,10 +67,10 @@ func (l *GatewayLogic) processCameraState(message *entities.IotMessage) error {
 	// Check recording mode
 	switch cameraLogicParams.RecordingMode {
 	case params.RecordingModeContinuous:
-		tasks.NewRecordMediaStreamTask().Run(message)
+		go tasks.NewRecordMediaStreamTask().Run(message)
 	case params.RecordingModeMotion:
 		if cameraLogicParams.MotionInProcess {
-			tasks.NewRecordMediaStreamTask().Run(message)
+			go tasks.NewRecordMediaStreamTask().Run(message)
 		}
 	}
 
@@ -91,12 +91,12 @@ func (l *GatewayLogic) processCameraData(message *entities.IotMessage) error {
 		//// Restore mediaserver params
 		//message.MediaserverIp = cameraLogicParams.MediaserverIp
 		//message.ApplicationName = cameraLogicParams.ApplicationName
-		tasks.NewRecordMediaStreamTask().Run(message)
+		go tasks.NewRecordMediaStreamTask().Run(message)
 		//}
 	}
 
 	// Save camera sensors events in InfluxDB
-	tasks.NewStoreSensorDataInfluxTask().Run(message)
+	go tasks.NewStoreSensorDataInfluxTask().Run(message)
 
 	// Inform user about motion detection
 	if message.Label == "motionDetector" && message.SensorData == "on" && l.UserParams.Push {
@@ -106,7 +106,7 @@ func (l *GatewayLogic) processCameraData(message *entities.IotMessage) error {
 			"Обнаружено движение",
 			cameraLogicParams.DeviceTableId,
 			cameraLogicParams.UserId)
-		tasks.NewSendPushNotificationTask(l.conn).Run(pushMessage)
+		go tasks.NewSendPushNotificationTask(l.conn).Run(pushMessage)
 	}
 
 	return nil
@@ -135,23 +135,23 @@ func (l *GatewayLogic) processCameraCommand(message *entities.IotMessage) error 
 			l.UserParams.CanBeRecorded() {
 			// Start recording on Wowza
 			recordingCommand := cameraLogicParams.ToMessage(true)
-			tasks.NewRecordMediaStreamTask().Run(recordingCommand)
+			go tasks.NewRecordMediaStreamTask().Run(recordingCommand)
 		} else if currentRecordingMode == params.RecordingModeContinuous &&
 			newRecordingMode == params.RecordingModeMotion {
 			// Stop recording on Wowza
 			recordingCommand := cameraLogicParams.ToMessage(false)
-			tasks.NewRecordMediaStreamTask().Run(recordingCommand)
+			go tasks.NewRecordMediaStreamTask().Run(recordingCommand)
 		} else if currentRecordingMode == newRecordingMode {
 			// Process user with online tariff
 			if prevTariffId == params.UserTarifOnline && l.UserParams.CanBeRecorded() {
 				// Start recording on Wowza
 				recordingCommand := cameraLogicParams.ToMessage(true)
-				tasks.NewRecordMediaStreamTask().Run(recordingCommand)
+				go tasks.NewRecordMediaStreamTask().Run(recordingCommand)
 			}
 			if prevTariffId > params.UserTarifOnline && message.TariffId == params.UserTarifOnline {
 				// Stop recording on Wowza
 				recordingCommand := cameraLogicParams.ToMessage(false)
-				tasks.NewRecordMediaStreamTask().Run(recordingCommand)
+				go tasks.NewRecordMediaStreamTask().Run(recordingCommand)
 			}
 		}
 	}

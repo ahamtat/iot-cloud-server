@@ -206,7 +206,7 @@ func (l *GatewayLogic) Process(message *entities.IotMessage) error {
 	switch message.MessageType {
 	case "status":
 		// Update gateway status in MySQL database
-		tasks.NewUpdateGatewayStatusTask(l.conn).Run(message)
+		go tasks.NewUpdateGatewayStatusTask(l.conn).Run(message)
 	case "sensorData":
 		switch message.DeviceType {
 		case "camera":
@@ -216,7 +216,7 @@ func (l *GatewayLogic) Process(message *entities.IotMessage) error {
 		}
 	case "preview":
 		// Store camera image preview in database
-		tasks.NewStorePreviewTask(l.conn).Run(message)
+		go tasks.NewStorePreviewTask(l.conn).Run(message)
 	case "command":
 		err = l.processCameraCommand(message)
 	case "deviceState":
@@ -226,7 +226,7 @@ func (l *GatewayLogic) Process(message *entities.IotMessage) error {
 	case "cloudStreaming":
 		if message.DeviceType == "camera" {
 			// Update camera streaming state in MySQL database
-			tasks.NewUpdateCameraStreamingStateTask(l.conn).Run(message)
+			go tasks.NewUpdateCameraStreamingStateTask(l.conn).Run(message)
 		}
 	case "configurationData":
 		if message.DeviceType == "gateway" {
