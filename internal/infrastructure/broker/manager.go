@@ -2,9 +2,12 @@ package broker
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
 	"strings"
+	"time"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
 
@@ -26,6 +29,7 @@ type Manager struct {
 	Password string
 	Host     string
 	Port     int
+	CtlPort  int
 	Conn     *amqp.Connection
 	Ch       *amqp.Channel
 	evQue    amqp.Queue
@@ -34,7 +38,7 @@ type Manager struct {
 }
 
 // NewManager constructs Manager structure with AMQP connection parameters
-func NewManager(ServerID, protocol, user, password, host string, port int) *Manager {
+func NewManager(ServerID, protocol, user, password, host string, port, ctlPort int) *Manager {
 	return &Manager{
 		ServerID: ServerID,
 		Protocol: protocol,
@@ -42,6 +46,7 @@ func NewManager(ServerID, protocol, user, password, host string, port int) *Mana
 		Password: password,
 		Host:     host,
 		Port:     port,
+		CtlPort:  ctlPort,
 		gwChans:  NewGatewayChannelsMap(),
 	}
 }
@@ -248,4 +253,78 @@ func (m *Manager) DoGatewayRPC(gatewayID string, request *entities.IotMessage) (
 // GetGatewayChannel returns gateway channel interface
 func (m *Manager) GetGatewayChannel(gatewayID string) io.ReadWriteCloser {
 	return m.gwChans.Get(gatewayID)
+}
+
+// RestartGateways reads input gateway queues
+// and sends restart messages to them
+func (m *Manager) RestartGateways() {
+
+	// Create queues request to management plugin
+	requestUrl := fmt.Sprintf("http://%s:%d/api/queues/", m.Host, m.CtlPort)
+	req, err := http.NewRequest("GET", requestUrl, nil)
+	if err != nil {
+		logger.Error("failed creating http request",
+			"error", err, "caller", "RestartGateways")
+		return
+	}
+	req.SetBasicAuth(m.User, m.Password)
+
+	// Create request context
+	ctx, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+	defer cancel()
+	req = req.WithContext(ctx)
+
+	// Get queues list from management plugin
+	client := http.DefaultClient
+	resp, err := client.Do(req)
+	if err != nil {
+		logger.Error("error sending http request",
+			"error", err, "caller", "RestartGateways")
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode == http.StatusOK {
+		queues := make([]amqp.Queue, 0)
+		json.NewDecoder(resp.Body).Decode(&queues)
+
+		var gwCounter int
+		for _, que := range queues {
+			nameArr := strings.Split(que.Name, ".")
+			if len(nameArr) > 1 && nameArr[1] == "in" {
+
+				// Create restart message
+				gatewayID := nameArr[0]
+				message := entities.CreateCloudIotMessage(gatewayID, "")
+				message.Protocol = "amqp"
+				message.MessageType = "command"
+				message.Command = "restart"
+
+				// Marshal message to JSON
+				buffer, err := json.Marshal(message)
+				if err != nil {
+					logger.Error("failed marshalling message to JSON",
+						"error", err, "caller", "RestartGateways")
+					continue
+				}
+
+				// Send JSON to RabbitMQ broker
+				wr := NewAmqpWriter(m.Conn, gatewayID)
+				if n, err := wr.Write(buffer); err != nil || n != len(buffer) {
+					logger.Error("error sending message to broker",
+						"error", err, "caller", "RestartGateways")
+					continue
+				}
+				if err := wr.Close(); err != nil {
+					logger.Error("error closing gateway input channel",
+						"error", err, "caller", "RestartGateways")
+				}
+
+				gwCounter++
+			}
+		}
+		if gwCounter > 0 {
+			logger.Info("Restarted gateways", "counter", gwCounter)
+		}
+	}
 }

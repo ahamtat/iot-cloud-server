@@ -52,14 +52,26 @@ func main() {
 		viper.GetString("amqp.password"),
 		viper.GetString("amqp.host"),
 		viper.GetInt("amqp.port"),
+		viper.GetInt("amqp.ctlPort"),
 	)
 	if err := manager.Open(); err != nil {
 		logger.Fatal("could not open broker", "error", err)
 	}
 
+	// Restart connected gateways to renew their statuses
+	manager.RestartGateways()
+
+	// Initialize event exchange to process gateways statuses
 	if err := manager.EventExchangeInit(); err != nil {
 		logger.Fatal("could not initialize event exchange", "error", err)
 	}
+
+	// Make cancel context
+	ctx := context.Background()
+	ctx, cancel := context.WithCancel(ctx)
+
+	// Start RabbitMQ events processor
+	go manager.ProcessExchangeEvents(ctx, conn)
 
 	// Create RESTful API server
 	restAPI := rest.NewServer(manager)
@@ -67,23 +79,16 @@ func main() {
 		logger.Fatal("could not initialize RESTful API server")
 	}
 
-	// Make cancel context
-	ctx := context.Background()
-	ctx, cancel := context.WithCancel(ctx)
-
-	// Set interrupt handler
-	done := make(chan os.Signal, 1)
-	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
-
-	// Start RabbitMQ events processor
-	go manager.ProcessExchangeEvents(ctx, conn)
-
 	// Start RESTful API server in a separate goroutine
 	go func() {
 		if err := restAPI.Start(); err != nil {
 			logger.Fatal("could not start RESTful API server", "error", err)
 		}
 	}()
+
+	// Set interrupt handler
+	done := make(chan os.Signal, 1)
+	signal.Notify(done, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	logger.Info("Application started. Press Ctrl+C to exit...")
 
