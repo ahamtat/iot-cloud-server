@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/tasks"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/broker"
 

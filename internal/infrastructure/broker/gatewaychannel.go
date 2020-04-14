@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/tasks"
+	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/tasks"
 	"github.com/pkg/errors"
 
 	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
