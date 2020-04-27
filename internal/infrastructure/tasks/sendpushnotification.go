@@ -155,6 +155,7 @@ func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 		logger.Error("error while sending Push notification",
 			"error", err,
 			"caller", "SendPushNotificationTask")
+		return
 	}
 	defer func() {
 		if resp != nil {
