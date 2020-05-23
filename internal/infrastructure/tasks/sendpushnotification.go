@@ -10,10 +10,10 @@ import (
 
 	"github.com/spf13/viper"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/entities"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/interfaces"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/database"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/logger"
 )
 
 // SendPushNotificationTask structure

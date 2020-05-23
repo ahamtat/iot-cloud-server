@@ -4,7 +4,7 @@ import (
 	"io"
 	"sync"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/interfaces"
 )
 
 // ChannelsMap stores gateway channels

@@ -1,4 +1,4 @@
-module github.com/AcroManiac/iot-cloud-server
+module github.com/ahamtat/iot-cloud-server
 
 go 1.13
 

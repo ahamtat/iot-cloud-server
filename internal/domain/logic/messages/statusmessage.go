@@ -1,7 +1,7 @@
 package messages
 
 import (
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/entities"
 )
 
 // NewStatusMessage creates status message

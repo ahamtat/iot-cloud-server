@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/interfaces"
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/entities"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/interfaces"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/logger"
 	"github.com/spf13/viper"
 
 	_ "github.com/influxdata/influxdb1-client" // this is important because of the bug in go mod

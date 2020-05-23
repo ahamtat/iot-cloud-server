@@ -3,7 +3,7 @@ package interfaces
 import (
 	"io"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/entities"
 )
 
 // Interface for application business logic

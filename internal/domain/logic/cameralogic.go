@@ -3,12 +3,12 @@ package logic
 import (
 	"errors"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/messages"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/logic/messages"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/tasks"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/tasks"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/logic/params"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/entities"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/logic/params"
 )
 
 func (l *GatewayLogic) getCameraLogicParams(deviceId string) (*params.CameraLogicParams, error) {

@@ -3,7 +3,7 @@ package broker
 import (
 	"fmt"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/logger"
 	"github.com/pkg/errors"
 	"github.com/streadway/amqp"
 )

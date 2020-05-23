@@ -7,15 +7,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/application"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/application"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/rest"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/entities"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/rest"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/database"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/broker"
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/broker"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/logger"
 	"github.com/spf13/viper"
 )
 

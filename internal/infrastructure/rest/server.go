@@ -6,17 +6,17 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/tasks"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/tasks"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/broker"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/broker"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/logger"
 
 	"github.com/pkg/errors"
 
 	"github.com/spf13/viper"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/entities"
 
 	"github.com/gin-gonic/gin"
 )

@@ -9,13 +9,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/domain/entities"
+	"github.com/ahamtat/iot-cloud-server/internal/domain/entities"
 
 	"github.com/pkg/errors"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/database"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/database"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/logger"
 
 	"github.com/streadway/amqp"
 )

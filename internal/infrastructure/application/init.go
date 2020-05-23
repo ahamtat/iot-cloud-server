@@ -4,7 +4,7 @@ import (
 	"flag"
 	"log"
 
-	"github.com/AcroManiac/iot-cloud-server/internal/infrastructure/logger"
+	"github.com/ahamtat/iot-cloud-server/internal/infrastructure/logger"
 	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
