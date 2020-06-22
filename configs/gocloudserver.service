@@ -1,0 +1,21 @@
+[Unit]
+Description=Veedo IoT cloud server control daemon
+After=syslog.target
+After=network.target
+After=local-fs.target
+After=remote-fs.target
+
+[Service]
+Type=simple
+User=veedo
+Group=veedo
+Restart=always
+RestartSec=5
+WorkingDirectory=/home/veedo/Distrib/gocloudserver/cmd/gocloudserver
+ExecStart=/home/veedo/Distrib/gocloudserver/cmd/gocloudserver/gocloudserver \
+    --config=/home/veedo/Distrib/gocloudserver/configs/gocloudserver.prod.yaml
+KillMode=process
+KillSignal=SIGINT
+
+[Install]
+WantedBy=multi-user.target

@@ -15,6 +15,7 @@ cd ../../..
 # Copy configure
 mkdir $DirName/configs
 cp ../../../configs/gocloudserver.yaml $DirName/configs
+cp ../../../configs/gocloudserver.service $DirName/configs
 
 # Make archive
 tar -zcvf $DirName.tar.gz $DirName
