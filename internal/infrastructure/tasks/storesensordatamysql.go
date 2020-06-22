@@ -2,6 +2,9 @@ package tasks
 
 import (
 	"context"
+	"fmt"
+	"math"
+	"strconv"
 
 	"github.com/ahamtat/iot-cloud-server/internal/domain/entities"
 	"github.com/ahamtat/iot-cloud-server/internal/domain/interfaces"
@@ -32,6 +35,14 @@ func (t *StoreSensorDataMySqlTask) Run(message *entities.IotMessage) {
 		return
 	}
 
+	// Round long float values to 2 decimal places
+	value := message.SensorData
+	if len(value) > 10 {
+		if floatValue, err := strconv.ParseFloat(message.SensorData, 64); err == nil {
+			value = fmt.Sprintf("%.2f", math.Round(floatValue*100)/100)
+		}
+	}
+
 	// Wrap context with timeout value for database interactions
 	ctx, cancel := context.WithTimeout(context.Background(), viper.GetDuration("db.cloud.timeout"))
 	defer cancel()
@@ -41,7 +52,7 @@ func (t *StoreSensorDataMySqlTask) Run(message *entities.IotMessage) {
 			set value = ?, updated_at = now()
 			where device_id = ? and sensor = ?`
 	_, err := t.conn.Db.ExecContext(ctx, updateQueryText,
-		message.SensorData, message.DeviceTableId, message.GetLabel())
+		value, message.DeviceTableId, message.GetLabel())
 	if err != nil {
 		logger.Error("error updating sensors", "error", err, "caller", "StoreSensorDataMySqlTask")
 	}
