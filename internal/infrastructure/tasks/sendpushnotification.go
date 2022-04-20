@@ -87,7 +87,7 @@ func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 	}
 	defer func() { _ = rows.Close() }()
 
-	playerIds := make([]string, 8)
+	playerIds := make([]string, 0, 8)
 	for rows.Next() {
 		var id string
 		if err = rows.Scan(&id); err != nil {
@@ -135,7 +135,7 @@ func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 	}
 
 	// Create request
-	request, err := http.NewRequest("POST", t.host, bytes.NewBuffer(requestBody))
+	request, err := http.NewRequest("POST", t.host + t.requestUri, bytes.NewBuffer(requestBody))
 	if err != nil {
 		logger.Error("failed to create http request",
 			"error", err, "caller", "SendPushNotificationTask")
