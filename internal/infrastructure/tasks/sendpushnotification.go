@@ -49,6 +49,16 @@ type RequestBody struct {
 	Data             RequestBodyData     `json:"data"`
 }
 
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
 func NewSendPushNotificationTask(conn *database.Connection) interfaces.Task {
 	if conn == nil {
 		logger.Error("database connection is nil", "caller", "NewSendPushNotificationTask")
@@ -79,7 +89,7 @@ func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 	defer cancel()
 
 	// Get Player Ids for sending push notifications to user mobile device
-	queryText := `select player_id from v3_playerids where user_id = ?`
+	queryText := `select player_id, device_ids from v3_playerids where user_id = ?`
 	rows, err := t.conn.Db.QueryContext(ctx, queryText, message.UserId)
 	if err != nil {
 		logger.Error("error selecting player ids",
@@ -87,15 +97,24 @@ func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 	}
 	defer func() { _ = rows.Close() }()
 
-	playerIds := make([]string, 8)
+	playerIds := make([]string, 0, 8)
 	for rows.Next() {
 		var id string
-		if err = rows.Scan(&id); err != nil {
+		var deviceIds string
+		if err = rows.Scan(&id, &deviceIds); err != nil {
 			logger.Error("error reading player id",
 				"error", err, "caller", "SendPushNotificationTask")
 			continue
 		}
-		playerIds = append(playerIds, id)
+		if deviceIds == "" {
+			playerIds = append(playerIds, id)
+		} else {
+			var result map[string]interface{}
+			json.Unmarshal([]byte(deviceIds), &result)
+			if contains(message.DeviceTableId, result[message.DeviceType].(map[string]interface{})) {
+				playerIds = append(playerIds, id)
+			}
+		}
 	}
 
 	// Check for user devices
@@ -128,6 +147,7 @@ func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 			DeviceId:   message.DeviceTableId,
 		},
 	})
+	logger.Debug("request payload", "request", string(requestBody))
 	if err != nil {
 		logger.Error("could not marshal request body",
 			"error", err, "caller", "SendPushNotificationTask")
@@ -135,7 +155,7 @@ func (t *SendPushNotificationTask) Run(message *entities.IotMessage) {
 	}
 
 	// Create request
-	request, err := http.NewRequest("POST", t.host, bytes.NewBuffer(requestBody))
+	request, err := http.NewRequest("POST", t.host+t.requestUri, bytes.NewBuffer(requestBody))
 	if err != nil {
 		logger.Error("failed to create http request",
 			"error", err, "caller", "SendPushNotificationTask")
